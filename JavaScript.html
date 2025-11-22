@@ -637,6 +637,7 @@
                     <button onclick='confirmDeleteContract(${c.rowNumber})' class="btn-icon btn-delete" title="Xóa">🗑️</button>
                     <button onclick='printContract(${contractJson})' class="btn-icon btn-print" title="In">🖨️</button>
                     <button onclick='openCreateReceiptFromContract(${contractJson})' class="btn-icon" style="background-color: #28a745;" title="Tạo phiếu thu">💳</button>
+                    <button onclick='openPaymentHistory(${contractJson})' class="btn-icon" style="background-color: #17a2b8;" title="Lịch sử thanh toán">📋</button>
                 </td></tr>`;
         });
     }
@@ -2728,5 +2729,119 @@
     
     const receiptForm = document.getElementById('receiptForm');
     if (receiptForm) receiptForm.addEventListener('submit', handleReceiptFormSubmit);
+
+    // ============================================================================
+    // PAYMENT HISTORY FUNCTIONS (Lịch sử thanh toán)
+    // ============================================================================
+    
+    /**
+     * Mở modal xem lịch sử thanh toán của hợp đồng
+     * @param {Object} contract - Thông tin hợp đồng
+     */
+    function openPaymentHistory(contract) {
+        showLoader(true);
+        
+        // Hiển thị thông tin hợp đồng
+        document.getElementById('ph-contract-id').textContent = contract.id || '';
+        document.getElementById('ph-customer-name').textContent = contract.customerName || '';
+        document.getElementById('ph-package-name').textContent = contract.packageName || '';
+        
+        const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+        document.getElementById('ph-total-amount').textContent = formatter.format(contract.totalAmount || 0);
+        document.getElementById('ph-paid-amount').textContent = formatter.format(contract.totalPayment || 0);
+        document.getElementById('ph-remaining-amount').textContent = formatter.format(contract.remainingPayment || 0);
+        
+        // Lấy lịch sử thanh toán từ server
+        google.script.run
+            .withSuccessHandler(function(receipts) {
+                showLoader(false);
+                displayPaymentHistory(receipts, contract);
+                document.getElementById('paymentHistoryModal').style.display = 'block';
+            })
+            .withFailureHandler(function(error) {
+                showLoader(false);
+                showToast('Lỗi khi tải lịch sử thanh toán: ' + error.message, 'error');
+            })
+            .getReceiptsByContractId(contract.id);
+    }
+    
+    /**
+     * Hiển thị danh sách lịch sử thanh toán
+     * @param {Array} receipts - Danh sách phiếu thu
+     * @param {Object} contract - Thông tin hợp đồng
+     */
+    function displayPaymentHistory(receipts, contract) {
+        const tbody = document.getElementById('paymentHistoryTableBody');
+        tbody.innerHTML = '';
+        
+        // Kiểm tra nếu receipts có error
+        if (receipts && receipts.error) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: #dc3545; padding: 30px;">Lỗi: ${receipts.error}</td></tr>`;
+            return;
+        }
+        
+        if (!receipts || receipts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #6c757d; padding: 30px;">Chưa có lịch sử thanh toán</td></tr>';
+            
+            // Cập nhật thông tin tổng kết
+            document.getElementById('ph-total-payments').textContent = '0';
+            document.getElementById('ph-total-collected').textContent = '0đ';
+            document.getElementById('ph-payment-status').innerHTML = '<span style="color: #dc3545;">Chưa thanh toán</span>';
+            return;
+        }
+        
+        const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+        let totalCollected = 0;
+        
+        receipts.forEach(receipt => {
+            totalCollected += parseFloat(receipt.tong_thu) || 0;
+            
+            // Format status color
+            let statusColor = '#6c757d';
+            if (receipt.tinh_trang === 'Đã thu') statusColor = '#28a745';
+            else if (receipt.tinh_trang === 'Chưa thu') statusColor = '#dc3545';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td style="text-align: center; font-weight: 600;">${receipt.lan_thu}</td>
+                    <td style="font-size: 13px;">${receipt.id}</td>
+                    <td style="text-align: right; font-weight: 600; color: #28a745;">${formatter.format(receipt.tong_thu)}</td>
+                    <td style="font-size: 13px;">${receipt.thoi_gian_tao}</td>
+                    <td style="text-align: center;">${receipt.thang}/${receipt.nam}</td>
+                    <td style="font-size: 13px;">${receipt.nguoi_tao}</td>
+                    <td style="text-align: center;">
+                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background-color: ${statusColor}22; color: ${statusColor};">
+                            ${receipt.tinh_trang}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        // Cập nhật thông tin tổng kết
+        document.getElementById('ph-total-payments').textContent = receipts.length;
+        document.getElementById('ph-total-collected').textContent = formatter.format(totalCollected);
+        
+        // Xác định trạng thái thanh toán
+        const remainingAmount = (contract.remainingPayment || 0);
+        let paymentStatusHtml = '';
+        
+        if (remainingAmount <= 0) {
+            paymentStatusHtml = '<span style="color: #28a745; padding: 6px 12px; background-color: #28a74522; border-radius: 6px;">✓ Đã thanh toán đủ</span>';
+        } else if (totalCollected > 0) {
+            paymentStatusHtml = '<span style="color: #ffc107; padding: 6px 12px; background-color: #ffc10722; border-radius: 6px;">⚠ Đang thanh toán</span>';
+        } else {
+            paymentStatusHtml = '<span style="color: #dc3545; padding: 6px 12px; background-color: #dc354522; border-radius: 6px;">✗ Chưa thanh toán</span>';
+        }
+        
+        document.getElementById('ph-payment-status').innerHTML = paymentStatusHtml;
+    }
+    
+    /**
+     * Đóng modal lịch sử thanh toán
+     */
+    function closePaymentHistoryModal() {
+        document.getElementById('paymentHistoryModal').style.display = 'none';
+    }
 
 </script>

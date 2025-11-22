@@ -44,9 +44,89 @@ function getReceipts() {
         thoi_gian_tao: thoiGianTaoFormatted,
         ngay_tao: row[headerMap['ngay_tao']] || '',
         nguoi_tao: row[headerMap['nguoi_tao']] || '',
-        tinh_trang: row[headerMap['tinh_trang']] || ''
+        tinh_trang: row[headerMap['tinh_trang']] || '',
+        thang: row[headerMap['thang']] || '',
+        nam: row[headerMap['nam']] || ''
       };
     }).filter(function(p){ return p; });
+    return list;
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Lấy lịch sử thanh toán theo mã hợp đồng
+ * @param {string} contractId Mã hợp đồng
+ * @returns {Array<Object>} Danh sách phiếu thu của hợp đồng
+ */
+function getReceiptsByContractId(contractId) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName('phieu_thu');
+    if (!sheet) throw new Error("Sheet 'phieu_thu' không tồn tại.");
+    
+    var lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+    
+    var lastCol = sheet.getLastColumn();
+    var rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var headerMap = getHeaderMap(sheet);
+    
+    var list = rows.map(function(row, idx) {
+      var isDeleted = headerMap['IsDeleted'] !== undefined ? row[headerMap['IsDeleted']] : '';
+      var maHopDong = row[headerMap['ma_hop_dong']] || '';
+      
+      // Chỉ lấy các phiếu thu của hợp đồng này và chưa bị xóa
+      if (isDeleted === 'YES' || maHopDong !== contractId) return null;
+      if (row.every(function(cell){ return cell === ""; })) return null;
+      
+      var thoiGianTao = row[headerMap['thoi_gian_tao']];
+      var thoiGianTaoFormatted = '';
+      if (thoiGianTao) {
+        try {
+          thoiGianTaoFormatted = new Date(thoiGianTao).toLocaleString('vi-VN');
+        } catch (dateErr) {
+          thoiGianTaoFormatted = String(thoiGianTao);
+        }
+      }
+      
+      // Format ngay_tao if it's a Date object
+      var ngayTao = row[headerMap['ngay_tao']];
+      var ngayTaoFormatted = '';
+      if (ngayTao) {
+        if (ngayTao instanceof Date) {
+          ngayTaoFormatted = ngayTao.toLocaleDateString('vi-VN');
+        } else {
+          ngayTaoFormatted = String(ngayTao);
+        }
+      }
+      
+      return {
+        rowNumber: idx + 2,
+        id: String(row[headerMap['Id']] || ''),
+        ma_hop_dong: String(maHopDong),
+        ma_khach_hang: String(row[headerMap['ma_khach_hang']] || ''),
+        ten_khach_hang: String(row[headerMap['ten_khach_hang']] || ''),
+        so_dien_thoai: String(row[headerMap['so_dien_thoai']] || ''),
+        email: String(row[headerMap['email']] || ''),
+        cccd: String(row[headerMap['cccd']] || ''),
+        tong_thu: Number(row[headerMap['tong_thu']] || 0),
+        lan_thu: Number(row[headerMap['lan_thu']] || 0),
+        thoi_gian_tao: String(thoiGianTaoFormatted),
+        ngay_tao: String(ngayTaoFormatted),
+        nguoi_tao: String(row[headerMap['nguoi_tao']] || ''),
+        tinh_trang: String(row[headerMap['tinh_trang']] || ''),
+        thang: Number(row[headerMap['thang']] || 0),
+        nam: Number(row[headerMap['nam']] || 0)
+      };
+    }).filter(function(p){ return p; });
+    
+    // Sắp xếp theo lần thu (mới nhất trước)
+    list.sort(function(a, b) {
+      return b.lan_thu - a.lan_thu;
+    });
+    
     return list;
   } catch (e) {
     return { error: e.message };

@@ -21,7 +21,7 @@
             width: 21cm;
             min-height: 29.7cm;
             margin: 20px auto;
-            padding: 2cm;
+            padding: 2cm 1.5cm; /* Căn lề gọn lại chút để chứa đủ bảng 2 cột */
             background-color: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
             position: relative;
@@ -55,7 +55,7 @@
         /* --- Header --- */
         .header {
             width: 100%;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             border-bottom: 2px solid black;
             padding-bottom: 10px;
         }
@@ -66,9 +66,10 @@
         
         .main-title {
             text-align: center;
-            margin: 25px 0;
+            margin: 20px 0;
             font-size: 20pt;
             font-weight: bold;
+            line-height: 1.2;
         }
 
         /* --- Sections --- */
@@ -79,7 +80,7 @@
         .section-title {
             font-weight: bold;
             font-size: 14pt;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             text-transform: uppercase;
         }
         
@@ -87,17 +88,17 @@
         .two-column-layout {
             display: flex;
             justify-content: space-between;
-            gap: 40px;
+            gap: 30px;
             width: 100%;
         }
         .column {
-            width: 48%;
+            width: 49%;
         }
 
         .form-field {
             display: flex;
             align-items: baseline;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         
         .form-field label {
@@ -111,7 +112,8 @@
             border-bottom: 1px dotted #333;
             font-family: inherit;
             font-size: inherit;
-            padding: 2px;
+            padding: 0 5px;
+            background: transparent;
         }
         .form-field input[type="text"]:focus {
             outline: none;
@@ -122,19 +124,78 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .checkbox-group {
             display: flex;
             align-items: center;
-            margin-right: 25px;
+            margin-right: 20px;
             margin-bottom: 5px;
         }
         
         .checkbox-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+        }
+
+        /* ========================================= */
+        /*    STYLE CHO BẢNG ĐIỀU KHOẢN (SECTION III) */
+        /* ========================================= */
+        .terms-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            font-size: 11pt;
+        }
+
+        .terms-table td {
+            border: 1px solid black;
+            padding: 8px;
+            vertical-align: top;
+            text-align: justify;
+            width: 50%;
+            line-height: 1.3;
+        }
+
+        .term-header {
+            font-weight: bold;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .term-list {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .term-list li {
+            display: flex;
+            margin-bottom: 8px;
+        }
+
+        .term-list li .num {
+            margin-right: 5px;
+            font-weight: bold;
+            min-width: 15px;
+        }
+        
+        .term-list li .text {
+            flex: 1;
+        }
+
+        .sub-list {
+            margin-top: 5px;
+            padding-left: 5px;
+        }
+        .sub-list p {
+            display: flex;
+            margin: 3px 0;
+        }
+        .sub-list span.dash {
             margin-right: 8px;
         }
 
@@ -142,7 +203,8 @@
         .signature-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 30px;
+            margin-top: 20px;
+            page-break-inside: avoid;
         }
         .signature-table th, .signature-table td {
             border: 1px solid black;
@@ -151,9 +213,10 @@
         }
         .signature-table th {
             font-weight: bold;
+            vertical-align: middle;
         }
         .signature-table td.signature-cell {
-            height: 80px;
+            height: 100px;
             vertical-align: top;
             text-align: left;
         }
@@ -163,6 +226,7 @@
             display: flex;
             justify-content: space-between;
             margin-top: 30px;
+            font-size: 12pt;
         }
         .footer-block {
             width: 32%;
@@ -170,28 +234,30 @@
         }
         .footer-block .role {
             font-weight: bold;
+            margin: 5px 0;
         }
         .footer-block .signature-space {
-            height: 60px; /* Khoảng trống cho chữ ký */
+            height: 60px;
         }
         .footer-block .details {
             font-size: 11pt;
+            font-style: italic;
         }
 
         /* --- Print Styles --- */
         @media print {
-            body { background-color: white; font-size: 12pt; }
+            body { background-color: white; }
             .page-wrapper { width: 100%; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
             @page {
                 size: A4 portrait;
-                margin: 1.5cm;
+                margin: 1.5cm 1cm;
             }
         }
     </style>
 </head>
 <body>
     <div class="page-wrapper">
-        <!-- Thay đổi src bằng link ảnh logo của bạn -->
+        <!-- Logo -->
         <img class="watermark" src="https://i.imgur.com/u15nqXC.png" alt="Watermark">
         
         <div class="content">
@@ -207,22 +273,23 @@
 
             <h1 class="main-title">HỢP ĐỒNG HỢP TÁC HLV<br>(CONTRACT)</h1>
 
+            <!-- ========================== SECTION I ========================== -->
             <section class="section">
                 <h2 class="section-title">I. THÔNG TIN HLV/PERSONAL TRAINER INFORMATION</h2>
                 <div class="two-column-layout">
                     <div class="column">
-                        <div class="form-field"><label>Tên khách hàng/Full name:</label><input type="text"></div>
-                        <div class="form-field"><label>CCCD/ID:</label><input type="text"></div>
-                        <div class="form-field"><label>Địa chỉ/Address:</label><input type="text"></div>
-                        <div class="form-field"><label>Email:</label><input type="text"></div>
+                        <div class="form-field"><label>Tên khách hàng/Full name:</label><input type="text" value="<?= customer['Họ và Tên'] || '' ?>"></div>
+                        <div class="form-field"><label>CCCD/ID:</label><input type="text" value="<?= customer['CCCD'] || '' ?>"></div>
+                        <div class="form-field"><label>Địa chỉ/Address:</label><input type="text" value="<?= customer['Địa chỉ'] || '' ?>"></div>
+                        <div class="form-field"><label>Email:</label><input type="text" value="<?= customer['Email'] || '' ?>"></div>
                     </div>
                     <div class="column">
-                        <div class="form-field"><label>Hội viên là/Member is:</label><input type="text"></div>
-                        <div class="form-field"><label>Số hợp đồng/Contract No.:</label><input type="text"></div>
-                        <div class="form-field"><label>Mã hội viên/Member No.:</label><input type="text"></div>
-                        <div class="form-field"><label>Giới tính/Gender:</label><input type="text"></div>
-                        <div class="form-field"><label>SĐT/Phone number:</label><input type="text"></div>
-                        <div class="form-field"><label>Ngày sinh/DOB:</label><input type="text"></div>
+                        <div class="form-field"><label>Hội viên là/Member is:</label><input type="text" value=""></div>
+                        <div class="form-field"><label>Số hợp đồng/Contract No.:</label><input type="text" value="<?= contract.id || '' ?>"></div>
+                        <div class="form-field"><label>Mã hội viên/Member No.:</label><input type="text" value="<?= contract.customerId || '' ?>"></div>
+                        <div class="form-field"><label>Giới tính/Gender:</label><input type="text" value="<?= customer['Giới tính'] || '' ?>"></div>
+                        <div class="form-field"><label>SĐT/Phone number:</label><input type="text" value="<?= customer['Số điện thoại'] || '' ?>"></div>
+                        <div class="form-field"><label>Ngày sinh/DOB:</label><input type="text" value="<?= customer['Ngày sinh'] || '' ?>"></div>
                     </div>
                 </div>
                 <div class="form-field" style="margin-top: 10px;"><label>Trong trường hợp khẩn cấp liên hệ với ai/Incase of emergency, please contact:</label><input type="text"></div>
@@ -236,6 +303,7 @@
                 </div>
             </section>
 
+            <!-- ========================== SECTION II ========================== -->
             <section class="section">
                 <h2 class="section-title">II. HÌNH THỨC THANH TOÁN/PAYMENT</h2>
                 <div class="options-row">
@@ -250,14 +318,14 @@
                 </div>
                 <div class="two-column-layout" style="margin-top: 10px;">
                     <div class="column">
-                         <div class="form-field"><label>Gói tập có thời hạn/Package:</label><input type="text"></div>
-                         <div class="form-field"><label>Phí gói tập/Total Amount:</label><input type="text"></div>
-                         <div class="form-field"><label>Đăng ký tại chi nhánh/Location:</label><input type="text"></div>
+                         <div class="form-field"><label>Gói tập có thời hạn/Package:</label><input type="text" value="<?= contract.packageName || '' ?>"></div>
+                         <div class="form-field"><label>Phí gói tập/Total Amount:</label><input type="text" value="<?= contract.totalAmount || '' ?>"></div>
+                         <div class="form-field"><label>Đăng ký tại chi nhánh/Location:</label><input type="text" value=""></div>
                     </div>
                     <div class="column">
-                        <div class="form-field"><label>Ngày bắt đầu/Starting date:</label><input type="text"></div>
-                        <div class="form-field"><label>Ngày kết thúc/End date:</label><input type="text"></div>
-                        <div class="form-field"><label>Mã chi nhánh/Location code:</label><input type="text"></div>
+                        <div class="form-field"><label>Ngày bắt đầu/Starting date:</label><input type="text" value="<?= contract.startDate || '' ?>"></div>
+                        <div class="form-field"><label>Ngày kết thúc/End date:</label><input type="text" value="<?= contract.endDate || '' ?>"></div>
+                        <div class="form-field"><label>Mã chi nhánh/Location code:</label><input type="text" value=""></div>
                     </div>
                 </div>
                 <div class="options-row">
@@ -274,24 +342,169 @@
                 <div class="form-field"><label>Các khuyến mãi khác (Nếu có)/Other promotion (If any):</label><input type="text"></div>
             </section>
 
+            <!-- ========================== SECTION III ========================== -->
             <section class="section">
                 <h2 class="section-title">III. ĐIỀU KIỆN VÀ ĐIỀU KHOẢN/TERMS AND CONDITION</h2>
-                <p class="italic">(Nội dung chi tiết của điều khoản sẽ được hiển thị ở đây...)</p>
+                
+                <table class="terms-table">
+                    <!-- 1. GIẢI THÍCH -->
+                    <tr>
+                        <td>
+                            <span class="term-header">GIẢI THÍCH</span>
+                            <ul class="term-list">
+                                <li>
+                                    <span class="num">1.</span>
+                                    <span class="text">Hợp đồng hợp tác HLV này (“Hợp đồng”) là thoả thuận giữa HLV tự do và Phòng tập Lusty Fit (“Phòng tập”) về việc Hội viên đồng ý mua các gói tập luyện thể dục thể thao do Phòng tập Lusty Fit (“Phòng tập”) cung cấp.</span>
+                                </li>
+                                <li>
+                                    <span class="num">2.</span>
+                                    <span class="text">Các quyền lợi của HLV (“Hội viên”) sẽ được quy định bởi Hợp đồng này, Nội quy Phòng tập và loại Gói tập mà Hội viên nắm giữ.</span>
+                                </li>
+                            </ul>
+                        </td>
+                        <td>
+                            <span class="term-header">EXPLAIN</span>
+                            <ul class="term-list">
+                                <li>
+                                    <span class="num">1.</span>
+                                    <span class="text">Personal Trainer Cooperation Agreement (the "Agreement") is an agreement between the Freelance Personal Trainer and Lusty Fit Gym (“Gym”) regarding the Member's agreement to purchase fitness packages provided by the Lusty Fit Gyms ("Gyms").</span>
+                                </li>
+                                <li>
+                                    <span class="num">2.</span>
+                                    <span class="text">The Personal Trainers’(“Member”) benefits will be governed by this Agreement, the Gym Rules and the type of Training Package that the Member holds.</span>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+
+                    <!-- 2. CAM KẾT HỘI VIÊN -->
+                    <tr>
+                        <td>
+                            <span class="term-header">CAM KẾT HỘI VIÊN</span>
+                            <ul class="term-list">
+                                <li>
+                                    <span class="num">1.</span>
+                                    <span class="text">Tôi cam kết khi tham gia hoạt động tập luyện và các hoạt động khác tại Phòng tập, tình trạng sức khoẻ của Tôi hoàn toàn tốt, đủ điều kiện tập luyện và đã được sự chấp thuận của các bác sĩ. Tôi không bị khuyết tật hoặc bị suy giảm sức khoẻ, thương tật, bệnh tật hoặc bệnh tật ngăn cản tham gia vào các bài tập thể dục tích cực hoặc thụ động hoặc có thể gây ra nguy cơ hoặc thương tích cao hơn hoặc các hậu quả có hại cho sức khoẻ do kết quả của việc tập thể dục một cách tự nhiên hoặc cố gắng.</span>
+                                </li>
+                                <li>
+                                    <span class="num">2.</span>
+                                    <span class="text">
+                                        Các tuyên bố:
+                                        <div class="sub-list">
+                                            <p><span class="dash">-</span> <span>Tôi thay mặt cho bản thân và những người thừa kế, người được uỷ quyền và người được chỉ định tại đây tuyên bố trong các trường hợp xảy ra sự cố/tai nạn do lỗi vô ý của tôi hoặc của Phòng tập dẫn tới tử vong hoặc thương tích của tôi, việc giải quyết sẽ được đại diện các bên thảo luận trên tinh thần hoà giải và hợp tác và trong mọi trường hợp sẽ không dẫn tới một vụ kiện.</span></p>
+                                            <p><span class="dash">-</span> <span>Tôi hiểu rằng Tôi phải tự chịu trách nhiệm về tình trạng sức khoẻ của mình và phải báo cho đại diện của Phòng tập ngay khi có dấu hiệu bất thường khi tham gia tập luyện và Phòng tập sẽ không có trách nhiệm kiểm tra, giám sát sức khoẻ của Tôi.</span></p>
+                                            <p><span class="dash">-</span> <span>Trong trường hợp do vô tình hay cố ý, Tôi tham gia tập luyện hay các hoạt động khác tại Phòng tập trong điều kiện sức khoẻ không đảm bảo hoặc không thông báo kịp thời cho đại diện của Phòng tập dẫn đến việc sức khoẻ bị ảnh hưởng, hoặc gặp phải các chấn thương hoặc thậm chí bị tử vong, Tôi cam kết sẽ tự chịu hoàn toàn trách nhiệm và tự giải quyết các hậu quả phát sinh, bao gồm cả việc chịu toàn bộ các chi phí có liên quan.</span></p>
+                                            <p><span class="dash">-</span> <span>Tôi xin hoàn toàn chịu trách nhiệm về thương tật, thiệt hại tài sản hoặc tử vong đối với bất kì bên thứ ba nào trong quá trình tập luyện, nguyên nhân từ hoạt động của tôi tại Phòng tập.</span></p>
+                                            <p><span class="dash">-</span> <span>Bằng chi phí của mình, Tôi đồng ý bồi thường, bảo vệ và giữ Phòng tập vô hại khỏi bất kỳ tổn hại nào bắt nguồn từ việc lây nhiễm mầm bệnh, bệnh mà tôi hoặc người đi cùng tôi gây ra cho Phòng tập.</span></p>
+                                            <p><span class="dash">-</span> <span>Tôi đồng ý để Phòng tập liên hệ với người liên hệ khẩn cấp mà tôi đã cung cấp. Trong trường hợp từ chối cung cấp thông tin người lên hệ khẩn cấp, tôi sẽ chịu hoàn toàn trách nhiệm và tự giải quyết mọi vấn đề phát sinh.</span></p>
+                                            <p><span class="dash">-</span> <span>Tôi đồng ý để Phòng tập sơ cứu, cấp cứu hoặc vận chuyển đến cơ sở y tế gần nhất mà Phòng tập cho là phù hợp trong trường hợp tôi bị chấn thương hoặc có dấu hiệu bất thường về sức khoẻ khi tham gia các hoạt động tập luyện hoặc hoạt động khác tại Phòng tập.</span></p>
+                                            <p><span class="dash">-</span> <span>Tôi cam kết thực hiện nghiêm túc các Nội quy Phòng tập, bao gồm bản nội quy đính kèm theo hợp đồng này và mọi nội quy quy định khác tại Phòng tập, và Hợp đồng này.</span></p>
+                                            <p><span class="dash">-</span> <span>Tôi đồng ý trường hợp Tôi vi phạm bất kỳ cam kết nào tại Hợp đồng, Phòng tập có quyền chấm dứt Hợp đồng mà không bồi hoàn bất cứ khoản tiền nào mà Tôi đã đóng cho Phòng tập.</span></p>
+                                            <p><span class="dash">-</span> <span>Trong trường hợp Tôi lựa chọn hình thức thanh toán hằng tháng, Tôi đồng ý cho phép Phòng tập tự động khấu trừ phí gói tập hằng tháng từ thẻ tín dụng/ thẻ ghi nợ của Tôi cho tới khi Hợp đồng này chấm dứt. Số tiền tự động khấu trừ cho phép bao gồm: Phí gói tập hằng tháng, chi phí gia tăng theo kỳ hạn hoặc phí trả chậm hoặc các loại phí khác theo Hợp đồng này (nếu có) mà không cần phải bổ sung thêm bất cứ uỷ quyền nào từ Tôi.</span></p>
+                                            <p><span class="dash">-</span> <span>Tôi hiểu rằng Phòng tập Lusty Fit sử dụng camera an ninh tại toàn bộ địa điểm của Phòng tập trừ một số khu vực nhạy cảm trong Phòng tập. Các camera an ninh sẽ quay lại 24 giờ và có thể có các dịch vụ quản lý video từ xa. Bằng việc tham gia Hợp đồng này, tôi nhận thức được và cho phép việc giám sát này được thực hiện.</span></p>
+                                        </div>
+                                    </span>
+                                </li>
+                            </ul>
+                        </td>
+                        <td>
+                            <span class="term-header">MEMBERSHIP COMMITMENT</span>
+                            <ul class="term-list">
+                                <li>
+                                    <span class="num">1.</span>
+                                    <span class="text">I commit that when participating in training activities and other activities at the Gym, my health condition is completely good, eligible for training and has been approved by doctors. I do not have a disability or impairment of health, injury, illness or illness that prevents me from participating in active or passive exercise or that may pose a higher risk or injury or adverse health consequences as a result of exercising naturally or effortlessly.</span>
+                                </li>
+                                <li>
+                                    <span class="num">2.</span>
+                                    <span class="text">
+                                        Statements:
+                                        <div class="sub-list">
+                                            <p><span class="dash">-</span> <span>On behalf of myself and my heirs, authorized persons and designees, I hereby declare that in the event of an incident/accident due to my inadvertent fault or that of the Gym resulting in my death or injury, the settlement shall be discussed on behalf of the parties in a spirit of reconciliation and cooperation and in all The case will not lead to a lawsuit.</span></p>
+                                            <p><span class="dash">-</span> <span>I understand that I am responsible for my own health condition and must notify the representative of the Gym as soon as there are any abnormal signs when participating in training and the Gym will not be responsible for checking and monitoring my health.</span></p>
+                                            <p><span class="dash">-</span> <span>In the event that, accidentally or intentionally, I participate in training or other activities at the Gym under unsatisfactory health conditions or fail to notify the representative of the Gym in a timely manner, resulting in health being affected, or experiencing injuries or even death, I commit to take full responsibility and deal with the consequences arising by myself, including bearing all related costs.</span></p>
+                                            <p><span class="dash">-</span> <span>I am solely responsible for any injury, property damage or death to any third party during my workout or as a result of my activities at the Gym.</span></p>
+                                            <p><span class="dash">-</span> <span>At my expense, I agree to indemnify, defend and hold the Gym harmless from any harm stemming from infection with pathogens or diseases caused by me or my accompanying person to the Gym.</span></p>
+                                            <p><span class="dash">-</span> <span>I agree to let the Gym contact the emergency contact I provided. In case of refusal to provide information to the emergency system, I will take full responsibility and solve any problems that arise.</span></p>
+                                            <p><span class="dash">-</span> <span>I agree to have the Gym provide first aid, emergency treatment, or transport to the nearest medical facility that the Gym deems appropriate in the event that I suffer an injury or show signs of abnormal health while participating in training activities or other activities at the Gym.</span></p>
+                                            <p><span class="dash">-</span> <span>I commit to strictly implement the Internal Rules of the Gym, including the internal rules attached to this contract and all other internal regulations at the Gym, and this Agreement.</span></p>
+                                            <p><span class="dash">-</span> <span>I agree that in the event that I breach any of the commitments in the Agreement, the Gym has the right to terminate the Agreement without reimbursing any amount I have paid to the Gym.</span></p>
+                                            <p><span class="dash">-</span> <span>In the event that I choose the monthly payment method, I agree to allow the Gym to automatically deduct the monthly subscription fee from my credit/debit card until this Agreement is terminated. The amount of automatic deduction allowable includes: Monthly package fee, term incremental cost or late payment fee or other fees under this Agreement (if any) without any additional authorization from me.</span></p>
+                                            <p><span class="dash">-</span> <span>I understand that Lusty Fit Gym uses security cameras throughout the Gym location except for some sensitive areas in the Gym. The security cameras will be back 24 hours and there may be remote video management services. By entering into this Agreement, I acknowledge and authorize this oversight to take place.</span></p>
+                                        </div>
+                                    </span>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+
+                    <!-- 3. ĐIỀU KHOẢN CHUNG -->
+                    <tr>
+                        <td>
+                            <span class="term-header">ĐIỀU KHOẢN CHUNG</span>
+                            <ul class="term-list">
+                                <li>
+                                    <span class="num">1.</span>
+                                    <span class="text">Hợp đồng này có hiệu lực kể từ ngày ký và chấm dứt kể từ Ngày hết hạn Gói tập quy định tại Hợp đồng. Hợp đồng có thể được gia hạn tương ứng với thời hạn của Gói tập hoặc thời gian tạm ngưng Gói tập theo đúng các quy định về gia hạn hoặc tạm ngưng sử dụng Gói tập tại Nội quy Phòng tập. Hợp đồng có thể bị chấm dứt trước thời hạn theo các trường hợp chấm dứt quy định tại Hợp đồng và Nội quy Phòng tập. Trong trường hợp Hội viên được tặng thêm các Gói tập ngắn hạn theo phê duyệt hoặc chương trình khuyến mãi, thì các điều kiện điều khoản của hợp đồng chính sẽ vẫn còn hiệu lực áp dụng đối với các gói cộng thêm.</span>
+                                </li>
+                                <li>
+                                    <span class="num">2.</span>
+                                    <span class="text">Nội quy Phòng tập được đính kèm Hợp đồng này và các nội quy khác mà Phòng tập đề ra là một phần không thể tách rời khỏi Hợp đồng và có giá trị pháp lý ràng buộc Hội viên và Phòng tập.</span>
+                                </li>
+                                <li>
+                                    <span class="num">3.</span>
+                                    <span class="text">Bất cứ tranh chấp nào phát sinh từ hoặc liên quan tới Hợp đồng này trước hết sẽ được Hai bên giải quyết thông qua thương lượng, hoà giải. Trong trường hợp không giải quyết được bằng hoà giải, bất cứ bên nào cũng có quyền đưa vụ việc ra giải quyết tại Toà án có thẩm quyền theo quy định của pháp luật Việt Nam.</span>
+                                </li>
+                                <li>
+                                    <span class="num">4.</span>
+                                    <span class="text">Hợp đồng này được lập thành 02 (hai) bản chính, mỗi bản gồm 04 trang, có giá trị pháp lý như nhau. Mỗi bên giữ 01 (một) bản để theo dõi và thực hiện.</span>
+                                </li>
+                            </ul>
+                        </td>
+                        <td>
+                            <span class="term-header">GENERAL TERMS</span>
+                            <ul class="term-list">
+                                <li>
+                                    <span class="num">1.</span>
+                                    <span class="text">This contract takes effect from the date of signing and terminates from the expiration date of the package specified in the contract. The contract can be extended in proportion to the duration of the Training Package or the suspension period of the Training Package in accordance with the regulations on extension or suspension of use of the Training Package in the Internal Regulations of the Gym. The contract may be terminated ahead of time according to the termination cases specified in the Contract and the Internal Regulations of the Gym. In the event that a Member is given additional Short-Term Training Packages under an approved or promotional program, the terms and conditions of the main contract will still apply to the add-on packages.</span>
+                                </li>
+                                <li>
+                                    <span class="num">2.</span>
+                                    <span class="text">The Gym Rules are attached to this Agreement and other rules set forth by the Gym which are an integral part of the Contract and have the legal force of binding on the Member and the Gym.</span>
+                                </li>
+                                <li>
+                                    <span class="num">3.</span>
+                                    <span class="text">Any dispute arising out of or related to this Contract will first be resolved by the two parties through negotiation and mediation. In case of failure to settle by conciliation, any party has the right to bring the case to a competent court for settlement in accordance with the provisions of Vietnamese law.</span>
+                                </li>
+                                <li>
+                                    <span class="num">4.</span>
+                                    <span class="text">This contract is made into 02 (two) originals, each of which consists of 04 pages, with the same legal validity. Each party keeps 01 (one) copy for monitoring and implementation.</span>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
             </section>
 
+            <!-- ========================== FOOTER SIGNATURE ========================== -->
             <table class="signature-table">
                 <thead>
                     <tr>
-                        <th>Tôi xác nhận đã đọc và nhận bộ hợp đồng (Hợp đồng, Nội quy, Hoá đơn)/I confirm that I have read and received the contract set (Contract, Rules, Invoices)</th>
-                        <th>TÊN ĐẦY ĐỦ/FULL NAME</th>
-                        <th>NGÀY KÝ/SIGNING DATE</th>
+                        <th style="width: 50%;">
+                            Tôi xác nhận đã đọc và nhận bộ hợp đồng (Hợp đồng, Nội quy, Hoá đơn)/I confirm that I have read and received the contract set (Contract, Rules, Invoices)
+                            <br><br>
+                            <span style="text-transform: uppercase;">CHỮ KÝ HỘI VIÊN/MEMBER SIGNATURE</span>
+                        </th>
+                        <th style="width: 25%;">TÊN ĐẦY ĐỦ/FULL NAME</th>
+                        <th style="width: 25%;">NGÀY KÝ/SIGNING DATE</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="signature-cell">CHỮ KÝ HỘI VIÊN/MEMBER SIGNATURE</td>
-                        <td></td>
-                        <td></td>
+                        <td class="signature-cell" style="height: 100px;"></td>
+                        <td style="vertical-align: bottom;">
+                             <?= customer['Họ và Tên'] || '' ?>
+                        </td>
+                        <td style="vertical-align: bottom;"></td>
                     </tr>
                 </tbody>
             </table>
@@ -308,7 +521,7 @@
                     <p class="details">Ký ghi rõ họ tên</p>
                 </div>
                  <div class="footer-block">
-                    <p class="role">Ngày bán/Sale date:</p>
+                    <p class="role">Ngày bán/Sale date: <?= generatedDate || '' ?></p>
                     <p class="role" style="font-weight: normal;">Nhân viên tư vấn:</p>
                      <div class="signature-space"></div>
                 </div>
