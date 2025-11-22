@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <title>Hợp Đồng Hợp Tác HLV - Lusty Fit</title>
+    <meta charset="UTF-8">
+    <style>
+        /* ========================================= */
+        /*         CÁC STYLE CHO BẢN IN             */
+        /* ========================================= */
+        body {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 13pt;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: #e0e0e0;
+        }
+        
+        .page-wrapper {
+            width: 21cm;
+            min-height: 29.7cm;
+            margin: 20px auto;
+            padding: 2cm;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Watermark (Logo chìm) */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            z-index: 1;
+            opacity: 0.08;
+            pointer-events: none;
+            width: 80%;
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .bold { font-weight: bold; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; }
+        .text-left { text-align: left; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        
+        /* --- Header --- */
+        .header {
+            width: 100%;
+            margin-bottom: 25px;
+            border-bottom: 2px solid black;
+            padding-bottom: 10px;
+        }
+        .header-info p {
+            margin: 3px 0;
+            line-height: 1.4;
+        }
+        
+        .main-title {
+            text-align: center;
+            margin: 25px 0;
+            font-size: 20pt;
+            font-weight: bold;
+        }
+
+        /* --- Sections --- */
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 14pt;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+        
+        /* --- Layout & Form Fields --- */
+        .two-column-layout {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            width: 100%;
+        }
+        .column {
+            width: 48%;
+        }
+
+        .form-field {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 12px;
+        }
+        
+        .form-field label {
+            white-space: nowrap;
+            margin-right: 8px;
+        }
+        
+        .form-field input[type="text"] {
+            width: 100%;
+            border: none;
+            border-bottom: 1px dotted #333;
+            font-family: inherit;
+            font-size: inherit;
+            padding: 2px;
+        }
+        .form-field input[type="text"]:focus {
+            outline: none;
+            border-bottom: 1px solid black;
+        }
+
+        .options-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-right: 25px;
+            margin-bottom: 5px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+        }
+
+        /* --- Signature Table --- */
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+        .signature-table th, .signature-table td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        .signature-table th {
+            font-weight: bold;
+        }
+        .signature-table td.signature-cell {
+            height: 80px;
+            vertical-align: top;
+            text-align: left;
+        }
+        
+        /* --- Footer --- */
+        .page-footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        .footer-block {
+            width: 32%;
+            text-align: center;
+        }
+        .footer-block .role {
+            font-weight: bold;
+        }
+        .footer-block .signature-space {
+            height: 60px; /* Khoảng trống cho chữ ký */
+        }
+        .footer-block .details {
+            font-size: 11pt;
+        }
+
+        /* --- Print Styles --- */
+        @media print {
+            body { background-color: white; font-size: 12pt; }
+            .page-wrapper { width: 100%; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
+            @page {
+                size: A4 portrait;
+                margin: 1.5cm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Thay đổi src bằng link ảnh logo của bạn -->
+        <img class="watermark" src="https://i.imgur.com/u15nqXC.png" alt="Watermark">
+        
+        <div class="content">
+            <header class="header">
+                <div class="header-info">
+                    <p class="bold">Lusty Fit – Chi nhánh Đặng Thai Mai, Tây Hồ</p>
+                    <p>Địa chỉ: Số 3, ngách 12/2/5, Đặng Thai Mai, phường Quảng An, Tây Hồ, Hà Nội</p>
+                    <p>Mã chi nhánh: <span id="branch-code"></span></p>
+                    <p>Email: <span id="company-email"></span></p>
+                    <p>SĐT: <span id="company-phone"></span></p>
+                </div>
+            </header>
+
+            <h1 class="main-title">HỢP ĐỒNG HỢP TÁC HLV<br>(CONTRACT)</h1>
+
+            <section class="section">
+                <h2 class="section-title">I. THÔNG TIN HLV/PERSONAL TRAINER INFORMATION</h2>
+                <div class="two-column-layout">
+                    <div class="column">
+                        <div class="form-field"><label>Tên khách hàng/Full name:</label><input type="text"></div>
+                        <div class="form-field"><label>CCCD/ID:</label><input type="text"></div>
+                        <div class="form-field"><label>Địa chỉ/Address:</label><input type="text"></div>
+                        <div class="form-field"><label>Email:</label><input type="text"></div>
+                    </div>
+                    <div class="column">
+                        <div class="form-field"><label>Hội viên là/Member is:</label><input type="text"></div>
+                        <div class="form-field"><label>Số hợp đồng/Contract No.:</label><input type="text"></div>
+                        <div class="form-field"><label>Mã hội viên/Member No.:</label><input type="text"></div>
+                        <div class="form-field"><label>Giới tính/Gender:</label><input type="text"></div>
+                        <div class="form-field"><label>SĐT/Phone number:</label><input type="text"></div>
+                        <div class="form-field"><label>Ngày sinh/DOB:</label><input type="text"></div>
+                    </div>
+                </div>
+                <div class="form-field" style="margin-top: 10px;"><label>Trong trường hợp khẩn cấp liên hệ với ai/Incase of emergency, please contact:</label><input type="text"></div>
+                <div class="two-column-layout">
+                    <div class="column"><div class="form-field"><label>Tên/Name:</label><input type="text"></div></div>
+                    <div class="column"><div class="form-field"><label>SĐT/Phone number:</label><input type="text"></div></div>
+                </div>
+                 <div class="two-column-layout">
+                    <div class="column"><div class="form-field"><label>Từ chối cung cấp thông tin với lí do/Refusal to provide information for:</label><input type="text"></div></div>
+                    <div class="column"><div class="form-field"><label>Ký xác nhận/Signature:</label><input type="text"></div></div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">II. HÌNH THỨC THANH TOÁN/PAYMENT</h2>
+                <div class="options-row">
+                    <div class="checkbox-group"><input type="checkbox"><label>Trả trước một lần/One time payment</label></div>
+                    <div class="checkbox-group"><input type="checkbox"><label>Trả theo từng đợt/Installments</label></div>
+                </div>
+                <div class="options-row">
+                    <label class="bold">Phương thức thanh toán/Payment method:</label>
+                    <div class="checkbox-group" style="margin-left:15px;"><input type="checkbox"><label>Tiền mặt/Cash</label></div>
+                    <div class="checkbox-group"><input type="checkbox"><label>Thẻ ghi nợ/tín dụng/Debit or Credit Card</label></div>
+                    <div class="checkbox-group"><input type="checkbox"><label>Chuyển khoản/Transfer</label></div>
+                </div>
+                <div class="two-column-layout" style="margin-top: 10px;">
+                    <div class="column">
+                         <div class="form-field"><label>Gói tập có thời hạn/Package:</label><input type="text"></div>
+                         <div class="form-field"><label>Phí gói tập/Total Amount:</label><input type="text"></div>
+                         <div class="form-field"><label>Đăng ký tại chi nhánh/Location:</label><input type="text"></div>
+                    </div>
+                    <div class="column">
+                        <div class="form-field"><label>Ngày bắt đầu/Starting date:</label><input type="text"></div>
+                        <div class="form-field"><label>Ngày kết thúc/End date:</label><input type="text"></div>
+                        <div class="form-field"><label>Mã chi nhánh/Location code:</label><input type="text"></div>
+                    </div>
+                </div>
+                <div class="options-row">
+                    <label class="bold">Loại hợp đồng/Contract type:</label>
+                    <div class="checkbox-group" style="margin-left:15px;"><input type="checkbox"><label>Mới/New</label></div>
+                    <div class="checkbox-group"><input type="checkbox"><label>Gia hạn/Renewal</label></div>
+                    <div class="checkbox-group"><input type="checkbox"><label>Nâng cấp/Upgrade</label></div>
+                </div>
+                <div class="options-row">
+                     <label class="bold">Đăng ký Membership/Register for Membership:</label>
+                    <div class="checkbox-group" style="margin-left:15px;"><input type="checkbox"><label>Có/Yes</label></div>
+                    <div class="checkbox-group"><input type="checkbox"><label>Không/No</label></div>
+                </div>
+                <div class="form-field"><label>Các khuyến mãi khác (Nếu có)/Other promotion (If any):</label><input type="text"></div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">III. ĐIỀU KIỆN VÀ ĐIỀU KHOẢN/TERMS AND CONDITION</h2>
+                <p class="italic">(Nội dung chi tiết của điều khoản sẽ được hiển thị ở đây...)</p>
+            </section>
+
+            <table class="signature-table">
+                <thead>
+                    <tr>
+                        <th>Tôi xác nhận đã đọc và nhận bộ hợp đồng (Hợp đồng, Nội quy, Hoá đơn)/I confirm that I have read and received the contract set (Contract, Rules, Invoices)</th>
+                        <th>TÊN ĐẦY ĐỦ/FULL NAME</th>
+                        <th>NGÀY KÝ/SIGNING DATE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="signature-cell">CHỮ KÝ HỘI VIÊN/MEMBER SIGNATURE</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <footer class="page-footer">
+                <div class="footer-block">
+                    <p class="role">Quản lý Phòng tập/Gym Manager</p>
+                    <div class="signature-space"></div>
+                    <p class="details">Ký ghi rõ họ tên & đóng dấu</p>
+                </div>
+                <div class="footer-block">
+                    <p class="role">Lễ tân/Reception</p>
+                     <div class="signature-space"></div>
+                    <p class="details">Ký ghi rõ họ tên</p>
+                </div>
+                 <div class="footer-block">
+                    <p class="role">Ngày bán/Sale date:</p>
+                    <p class="role" style="font-weight: normal;">Nhân viên tư vấn:</p>
+                     <div class="signature-space"></div>
+                </div>
+            </footer>
+
+        </div>
+    </div>
+</body>
+</html>

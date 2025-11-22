@@ -1,0 +1,2732 @@
+<script>
+    // =================================================================
+    // BIẾN TOÀN CỤC & CACHE
+    // =================================================================
+    let allMembers = [], allContracts = [], allPriceList = [], allPriceListFull = [], allPTs = [], 
+        allPolicyMembers = [], allPolicyPTs = [], allPrograms = [], allGifts = [], allSettings = [], allReceipts = [];
+    let isInitialDataLoaded = false;
+    let isLoadingData = false; // Prevent multiple simultaneous loads
+    let isRateLimited = false; // Track rate limit state
+    let currentView = 'members'; // Track current view
+
+    // =================================================================
+    // KHỞI TẠO ỨNG DỤNG
+    // =================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        setupSidebar(); 
+        setupContractTypeSelector();
+        setupContractTypeFilter(); // Setup tab filter for contract view
+        loadInitialData(); 
+    });
+
+    function loadInitialData() {
+        // Prevent multiple simultaneous loads
+        if (isLoadingData) {
+            return;
+        }
+        
+        isLoadingData = true;
+        showLoader(true);
+        
+        // STEP 1: Load critical data fast
+        google.script.run
+            .withSuccessHandler(response => {
+                // Handle null response
+                if (!response) {
+                    console.error('Response is null or undefined!');
+                    isLoadingData = false;
+                    showLoader(false);
+                    showToast('Lỗi: Server không trả về dữ liệu. Vui lòng kiểm tra Apps Script logs.', 'error');
+                    
+                    // Initialize with empty data
+                    allMembers = [];
+                    allContracts = [];
+                    allPriceList = [];
+                    allPTs = [];
+                    allPriceListFull = [];
+                    allPolicyMembers = [];
+                    allPolicyPTs = [];
+                    allPrograms = [];
+                    allGifts = [];
+                    allSettings = [];
+                    allReceipts = [];
+                    isInitialDataLoaded = true;
+                    switchView(currentView);
+                    return;
+                }
+                
+                if (response && response.success) {
+                    // Load critical data immediately
+                    allMembers = response.data.members || [];
+                    allContracts = response.data.contracts || [];
+                    allPriceList = response.data.priceList || [];
+                    allPTs = response.data.pts || [];
+                    
+                    // Check if there were any errors
+                    if (response.errors && Object.keys(response.errors).length > 0) {
+                        console.warn('Initial data load warnings:', response.errors);
+                    }
+                    
+                    // Initialize empty arrays for lazy-loaded data
+                    allPriceListFull = [];
+                    allPolicyMembers = [];
+                    allPolicyPTs = [];
+                    allPrograms = [];
+                    allGifts = [];
+                    allSettings = [];
+                    allReceipts = [];
+                    
+                    isInitialDataLoaded = true;
+                    
+                    // Show UI immediately
+                    switchView(currentView);
+                    showLoader(false);
+                    isLoadingData = false;
+                    
+                    // STEP 2: Load additional data in background with longer delay
+                    setTimeout(() => {
+                        loadAdditionalDataInBackground();
+                    }, 1500); // Increased delay to 1.5s to avoid rate limiting
+                } else {
+                    isLoadingData = false;
+                    showLoader(false);
+                    const msg = (response && response.message) ? response.message : 'Không thể tải dữ liệu khởi tạo.';
+                    console.error('Failed to load initial data:', msg);
+                    showToast(msg, 'error');
+                    
+                    // Still try to show UI with empty data
+                    allMembers = [];
+                    allContracts = [];
+                    allPriceList = [];
+                    allPTs = [];
+                    allPriceListFull = [];
+                    allPolicyMembers = [];
+                    allPolicyPTs = [];
+                    allPrograms = [];
+                    allGifts = [];
+                    allSettings = [];
+                    allReceipts = [];
+                    isInitialDataLoaded = true;
+                    switchView(currentView);
+                }
+            })
+            .withFailureHandler(err => {
+                isLoadingData = false;
+                showLoader(false);
+                const msg = err && err.message ? err.message : JSON.stringify(err);
+                console.error('Critical error loading initial data:', err);
+                showToast('Lỗi nghiêm trọng khi kết nối server: ' + msg, 'error');
+                
+                // Initialize empty arrays to prevent crashes
+                allMembers = [];
+                allContracts = [];
+                allPriceList = [];
+                allPTs = [];
+                allPriceListFull = [];
+                allPolicyMembers = [];
+                allPolicyPTs = [];
+                allPrograms = [];
+                allGifts = [];
+                allSettings = [];
+                allReceipts = [];
+                isInitialDataLoaded = true;
+                switchView(currentView);
+            })
+            .getInitialDataFast();
+    }
+    
+    // Load additional data without blocking UI
+    function loadAdditionalDataInBackground() {
+        google.script.run
+            .withSuccessHandler(response => {
+                if (response && response.success) {
+                    allPriceListFull = response.data.priceListFull || [];
+                    allPolicyMembers = response.data.policyMembers || [];
+                    allPolicyPTs = response.data.policyPTs || [];
+                    allPrograms = response.data.programs || [];
+                    allGifts = response.data.gifts || [];
+                    allSettings = response.data.settings || [];
+                    allReceipts = response.data.receipts || [];
+                    
+                    // Set flags to indicate data has been loaded
+                    window.priceListFullLoaded = true;
+                    window.additionalDataLoaded = true;
+                    
+                    // Refresh current view if needed
+                    if (currentView === 'receipt' || currentView === 'policy-member' || currentView === 'policy-pt' || currentView === 'program' || currentView === 'gift' || currentView === 'price-list') {
+                        refreshCurrentView();
+                    }
+                } else {
+                    console.warn('Could not load additional data:', response);
+                }
+            })
+            .withFailureHandler(err => {
+                console.error('Error loading additional data:', err);
+                // Retry after 2 seconds if it's a rate limit error
+                if (err && err.message && err.message.includes('429')) {
+                    console.log('Rate limit hit, retrying in 2 seconds...');
+                    setTimeout(() => {
+                        loadAdditionalDataInBackground();
+                    }, 2000);
+                }
+            })
+            .getAdditionalData();
+    }
+
+    // =================================================================
+    // QUẢN LÝ GIAO DIỆN CHUNG
+    // =================================================================
+    function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
+    function setupSidebar() {
+        const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (isCollapsed) document.body.classList.add('sidebar-collapsed');
+        
+        // Setup search inputs
+        const searchPolicyMember = document.getElementById('search-policy-member');
+        const searchPolicyPT = document.getElementById('search-policy-pt');
+        const searchProgram = document.getElementById('search-program');
+        const searchGift = document.getElementById('search-gift');
+        
+        if (searchPolicyMember) searchPolicyMember.addEventListener('input', filterPolicyMemberTable);
+        if (searchPolicyPT) searchPolicyPT.addEventListener('input', filterPolicyPTTable);
+        if (searchProgram) searchProgram.addEventListener('input', filterProgramTable);
+        if (searchGift) searchGift.addEventListener('input', filterGiftTable);
+        
+        // Setup search for settings
+        const searchSettings = document.getElementById('search-settings');
+        if (searchSettings) searchSettings.addEventListener('input', filterSettingsTable);
+        
+        // Setup form submits
+        const policyMemberForm = document.getElementById('policyMemberForm');
+        const policyPTForm = document.getElementById('policyPTForm');
+        const programForm = document.getElementById('programForm');
+        const giftForm = document.getElementById('giftForm');
+        const settingsForm = document.getElementById('settingsForm');
+        
+        if (policyMemberForm) policyMemberForm.addEventListener('submit', handlePolicyMemberFormSubmit);
+        if (policyPTForm) policyPTForm.addEventListener('submit', handlePolicyPTFormSubmit);
+        if (programForm) programForm.addEventListener('submit', handleProgramFormSubmit);
+        if (giftForm) giftForm.addEventListener('submit', handleGiftFormSubmit);
+        if (settingsForm) settingsForm.addEventListener('submit', handleSettingsFormSubmit);
+    }
+    
+    function toggleSubmenu(element) {
+        const parent = element.parentElement;
+        const wasOpen = parent.classList.contains('open');
+        
+        // Close all other submenus
+        document.querySelectorAll('.nav-parent').forEach(item => {
+            item.classList.remove('open');
+        });
+        
+        // Toggle current submenu
+        if (!wasOpen) {
+            parent.classList.add('open');
+        }
+    }
+    function toggleSidebar() {
+        const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    }
+    function switchView(viewName) {
+        // Allow switching views even if initial data hasn't loaded yet.
+        const viewEl = document.getElementById(`view-${viewName}`);
+        if (!viewEl) { console.warn('View not found:', viewName); return; }
+        document.querySelectorAll('.main-content').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.sidebar .nav-links li a').forEach(n => n.classList.remove('active'));
+        viewEl.classList.add('active');
+        const navEl = document.getElementById(`nav-${viewName}`);
+        if (navEl) navEl.classList.add('active');
+
+        // Save current view
+        currentView = viewName;
+
+        // If initial data not loaded, attempt to load in background (don't block the UI)
+        if (!isInitialDataLoaded) {
+            loadInitialData();
+        }
+
+        if (viewName === 'members') displayMembers(allMembers);
+        if (viewName === 'contracts') displayContracts(allContracts);
+        if (viewName === 'pts') displayPTs(allPTs);
+        if (viewName === 'price-list') {
+            // Check if priceListFull has been loaded
+            if (allPriceListFull.length === 0 && !window.priceListFullLoaded) {
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(list => {
+                        showLoader(false);
+                        if (list && !list.error) {
+                            allPriceListFull = list;
+                            window.priceListFullLoaded = true;
+                            displayPriceListFull(allPriceListFull);
+                        } else {
+                            console.error('Failed to load priceListFull:', list);
+                            displayPriceListFull([]);
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Error loading priceListFull:', err);
+                        displayPriceListFull([]);
+                    })
+                    .getPriceListFull();
+            } else {
+                displayPriceListFull(allPriceListFull);
+            }
+        }
+        if (viewName === 'policy-member') displayPolicyMembers();
+        if (viewName === 'policy-pt') displayPolicyPTs();
+        if (viewName === 'program') displayPrograms();
+        if (viewName === 'gift') displayGifts();
+        if (viewName === 'settings') displaySettings();
+        if (viewName === 'receipt') displayReceipts();
+        if (viewName === 'receipt') displayReceipts();
+    }
+    function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+    window.onclick = e => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; };
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-times-circle'}"></i> ${message}`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.5s forwards';
+            toast.addEventListener('animationend', () => toast.remove());
+        }, 3000);
+    }
+    /**
+     * Optimistic UI Update - Hiển thị thay đổi ngay lập tức
+     * Cập nhật dữ liệu local trước, rồi sync với backend sau
+     */
+    function handleServerResponse(response, optimisticData) {
+        showLoader(false);
+        showToast(response.message, response.success ? 'success' : 'error');
+        
+        if (response.success) {
+            closeModal('memberModal');
+            closeModal('contractModal');
+            closeModal('ptModal');
+            closeModal('priceListModal');
+            closePolicyMemberModal();
+            closePolicyPTModal();
+            closeProgramModal();
+            closeGiftModal();
+            closeSettingsModal();
+            closeReceiptModal();
+            
+            // Reload data từ server sau khi thành công
+            reloadCurrentViewData();
+        } else {
+            // Nếu thất bại, rollback optimistic update
+            if (optimisticData && optimisticData.rollback) {
+                optimisticData.rollback();
+                refreshCurrentView();
+            }
+        }
+    }
+    
+    /**
+     * Reload data từ server cho view hiện tại
+     */
+    function reloadCurrentViewData() {
+        switch(currentView) {
+            case 'members':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allMembers = data;
+                            displayMembers(allMembers);
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload members:', err);
+                    })
+                    .getMembers();
+                break;
+                
+            case 'contracts':
+                showLoader(true);
+                
+                // Reset tab filter to "Tất cả" with black/white styling
+                const contractFilter = document.getElementById('contractTypeFilter');
+                if (contractFilter) {
+                    contractFilter.querySelectorAll('.btn-segment').forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.backgroundColor = '';
+                        btn.style.color = '#343A40';
+                    });
+                    const allTabBtn = contractFilter.querySelector('.btn-segment[data-filter="all"]');
+                    if (allTabBtn) {
+                        allTabBtn.classList.add('active');
+                        allTabBtn.style.backgroundColor = '#343A40';
+                        allTabBtn.style.color = '#FFFFFF';
+                    }
+                }
+                
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allContracts = data;
+                            displayContracts(allContracts);
+                            
+                            // Also reload price list for contract form
+                            google.script.run
+                                .withSuccessHandler(priceList => {
+                                    if (priceList && !priceList.error) {
+                                        allPriceList = priceList;
+                                    }
+                                })
+                                .getPriceList();
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload contracts:', err);
+                    })
+                    .getContracts();
+                break;
+                
+            case 'pts':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allPTs = data;
+                            displayPTs(allPTs);
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload PTs:', err);
+                    })
+                    .getPTs();
+                break;
+                
+            case 'price-list':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allPriceListFull = data;
+                            displayPriceListFull(allPriceListFull);
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload priceListFull:', err);
+                    })
+                    .getPriceListFull();
+                break;
+                
+            case 'policy-member':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allPolicyMembers = data;
+                            displayPolicyMembers();
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload policyMembers:', err);
+                    })
+                    .getPolicyMembers();
+                break;
+                
+            case 'policy-pt':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allPolicyPTs = data;
+                            displayPolicyPTs();
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload policyPTs:', err);
+                    })
+                    .getPolicyPTs();
+                break;
+                
+            case 'program':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allPrograms = data;
+                            displayPrograms();
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload programs:', err);
+                    })
+                    .getPrograms();
+                break;
+                
+            case 'gift':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allGifts = data;
+                            displayGifts();
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload gifts:', err);
+                    })
+                    .getGifts();
+                break;
+                
+            case 'settings':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allSettings = data;
+                            displaySettings();
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload settings:', err);
+                    })
+                    .getSettings();
+                break;
+                
+            case 'receipt':
+                showLoader(true);
+                google.script.run
+                    .withSuccessHandler(data => {
+                        showLoader(false);
+                        if (data && !data.error) {
+                            allReceipts = data;
+                            displayReceipts();
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showLoader(false);
+                        console.error('Failed to reload receipts:', err);
+                    })
+                    .getReceipts();
+                break;
+                
+            default:
+                break;
+        }
+    }
+    
+    /**
+     * Refresh chỉ view hiện tại thay vì reload toàn bộ
+     */
+    function refreshCurrentView() {
+        switch(currentView) {
+            case 'members':
+                displayMembers(allMembers);
+                break;
+            case 'contracts':
+                displayContracts(allContracts);
+                break;
+            case 'pt':
+                displayPTs();
+                break;
+            case 'price-list':
+                displayPriceListFull(allPriceListFull);
+                break;
+            case 'policy-member':
+                displayPolicyMembers();
+                break;
+            case 'policy-pt':
+                displayPolicyPTs();
+                break;
+            case 'program':
+                displayPrograms();
+                break;
+            case 'gift':
+                displayGifts();
+                break;
+            case 'receipt':
+                displayReceipts();
+                break;
+            case 'settings':
+                displaySettings();
+                break;
+        }
+    }
+
+    // =================================================================
+    // LOGIC MODULE HỢP ĐỒNG
+    // =================================================================
+    function setupContractTypeSelector() {
+        const selector = document.getElementById('contractTypeSelector');
+        if (!selector) return; // modal/element may not be present at load time
+        selector.addEventListener('click', (event) => {
+            const clickedButton = event.target.closest('.btn-segment');
+            if (!clickedButton || clickedButton.classList.contains('active')) return;
+            selector.querySelectorAll('.btn-segment').forEach(btn => btn.classList.remove('active'));
+            clickedButton.classList.add('active');
+            handleContractTypeChange();
+        });
+    }
+
+    // Setup tab filter for contract list view
+    function setupContractTypeFilter() {
+        const filterTabs = document.getElementById('contractTypeFilter');
+        if (!filterTabs) return; // element may not be present at load time
+        
+        filterTabs.addEventListener('click', (event) => {
+            const clickedButton = event.target.closest('.btn-segment');
+            if (!clickedButton || clickedButton.classList.contains('active')) return;
+            
+            // Update active tab with black/white styling
+            filterTabs.querySelectorAll('.btn-segment').forEach(btn => {
+                btn.classList.remove('active');
+                // Reset to default style (white background, black text)
+                btn.style.backgroundColor = '';
+                btn.style.color = '#343A40';
+            });
+            
+            // Apply active style (black background, white text)
+            clickedButton.classList.add('active');
+            clickedButton.style.backgroundColor = '#343A40';
+            clickedButton.style.color = '#FFFFFF';
+            
+            // Trigger filter
+            filterContractTable();
+        });
+    }
+
+    // CẬP NHẬT: BỎ CỘT SĐT, THÊM CỘT LOẠI HỢP ĐỒNG
+    function displayContracts(contracts) {
+        const tbody = document.getElementById('contractTableBody');
+        tbody.innerHTML = '';
+        if (!contracts || contracts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Không có dữ liệu hợp đồng.</td></tr>';
+            return;
+        }
+        contracts.forEach(c => {
+            const contractJson = JSON.stringify(c);
+            const contractTypeText = c.contractType || 'Hội viên';
+            
+            tbody.innerHTML += `<tr>
+                <td style="text-align: center;">${contractTypeText}</td>
+                <td>${c.customerName}</td>
+                <td>${c.packageName}</td>
+                <td>${c.startDate}</td>
+                <td>${c.endDate}</td>
+                <td>${c.status}</td>
+                <td>
+                    <button onclick='openEditContractModal(${c.rowNumber})' class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick='confirmDeleteContract(${c.rowNumber})' class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                    <button onclick='printContract(${contractJson})' class="btn-icon btn-print" title="In">🖨️</button>
+                    <button onclick='openCreateReceiptFromContract(${contractJson})' class="btn-icon" style="background-color: #28a745;" title="Tạo phiếu thu">💳</button>
+                </td></tr>`;
+        });
+    }
+
+    // CẬP NHẬT: TÌM THEO TÊN VÀ MÃ HĐ VÀ FILTER THEO LOẠI HỢP ĐỒNG
+    function filterContractTable() {
+        const searchFilter = document.getElementById('contractSearchInput').value.toLowerCase();
+        
+        // Get active tab filter
+        const activeTabBtn = document.querySelector('#contractTypeFilter .btn-segment.active');
+        const typeFilter = activeTabBtn ? activeTabBtn.dataset.filter : 'all';
+        
+        let filteredContracts = allContracts;
+        
+        // Filter by contract type
+        if (typeFilter !== 'all') {
+            filteredContracts = filteredContracts.filter(contract => 
+                contract.contractType === typeFilter
+            );
+        }
+        
+        // Filter by search text
+        if (searchFilter) {
+            filteredContracts = filteredContracts.filter(contract => 
+                contract.customerName.toLowerCase().includes(searchFilter) ||
+                (contract.id && contract.id.toLowerCase().includes(searchFilter))
+            );
+        }
+        
+        displayContracts(filteredContracts);
+    }
+    
+    function handleContractTypeChange() {
+        const activeBtn = document.querySelector('#contractTypeSelector .btn-segment.active');
+        const type = activeBtn ? activeBtn.dataset.type : 'Hội viên';
+        
+        const customerArea = document.getElementById('customer-selection-area');
+        const ptArea = document.getElementById('pt-selection-area');
+        const customerSelect = document.getElementById('contractCustomerSelect');
+        const ptSelect = document.getElementById('contractPTSelect');
+        
+        if (type === 'Hội viên') {
+            customerArea.style.display = 'block';
+            ptArea.style.display = 'none';
+            customerSelect.setAttribute('required', 'required');
+            ptSelect.removeAttribute('required');
+            ptSelect.value = ''; // Clear PT selection
+        } else {
+            customerArea.style.display = 'none';
+            ptArea.style.display = 'block';
+            customerSelect.removeAttribute('required');
+            ptSelect.setAttribute('required', 'required');
+            customerSelect.value = ''; // Clear customer selection
+        }
+        
+        // Clear person fields when switching type
+        clearPersonFields();
+        
+        const filteredPriceList = allPriceList.filter(p => p.doi_tuong_ap_dung === type);
+        const select = document.getElementById('priceListSelect');
+        select.innerHTML = '<option value="">-- Chọn gói tập --</option>';
+        filteredPriceList.forEach(p => select.add(new Option(p.ten_bang_gia, p.ma_bang_gia)));
+        handlePriceListChange();
+    }
+    function openAddContractModal() {
+        document.getElementById('contractForm').reset();
+        document.getElementById('contractModalTitle').innerText = 'Tạo Hợp Đồng Mới';
+        const selector = document.getElementById('contractTypeSelector');
+        selector.querySelectorAll('.btn-segment').forEach(btn => btn.classList.remove('active'));
+        selector.querySelector('.btn-segment[data-type="Hội viên"]').classList.add('active');
+        document.getElementById('contractModal').style.display = 'block';
+        const select = document.getElementById('contractCustomerSelect');
+        select.innerHTML = '<option value="">-- Chọn hội viên --</option>';
+        allMembers.forEach(m => select.add(new Option(`${m.fullName} - ${m.phoneNumber}`, `${m.id}|${m.fullName}`)));
+        
+        // Populate PT select
+        const ptSelect = document.getElementById('contractPTSelect');
+        ptSelect.innerHTML = '<option value="">-- Chọn PT --</option>';
+        allPTs.forEach(pt => ptSelect.add(new Option(`${pt.ten_pt} - ${pt.so_dien_thoai}`, `${pt.id}|${pt.ten_pt}`)));
+        
+        handleContractTypeChange();
+    }
+    
+    function handleCustomerSelectionChange() {
+        const select = document.getElementById('contractCustomerSelect');
+        const selectedValue = select.value;
+        if (!selectedValue) {
+            clearPersonFields();
+            return;
+        }
+        const customerId = selectedValue.split('|')[0];
+        const member = allMembers.find(m => m.id === customerId);
+        if (member) {
+            document.getElementById('contractPersonPhone').value = member.phoneNumber || '';
+            document.getElementById('contractPersonEmail').value = member.email || '';
+            document.getElementById('contractPersonCCCD').value = member.cccd || '';
+            document.getElementById('contractPersonAddress').value = member.address || '';
+            // Convert dd/mm/yyyy to yyyy-mm-dd for date input
+            const dob = member.dateOfBirth || '';
+            if (dob && dob.includes('/')) {
+                const parts = dob.split('/');
+                if (parts.length === 3) {
+                    document.getElementById('contractPersonDOB').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                } else {
+                    document.getElementById('contractPersonDOB').value = '';
+                }
+            } else {
+                document.getElementById('contractPersonDOB').value = dob;
+            }
+            document.getElementById('contractPersonGender').value = member.gender || '';
+        } else {
+            clearPersonFields();
+        }
+    }
+    
+    function handlePTSelectionChange() {
+        const select = document.getElementById('contractPTSelect');
+        const selectedValue = select.value;
+        if (!selectedValue) {
+            clearPersonFields();
+            return;
+        }
+        const ptId = selectedValue.split('|')[0];
+        const pt = allPTs.find(p => p.id === ptId);
+        if (pt) {
+            document.getElementById('contractPersonPhone').value = pt.so_dien_thoai || '';
+            document.getElementById('contractPersonEmail').value = pt.email || '';
+            document.getElementById('contractPersonCCCD').value = pt.cccd || '';
+            document.getElementById('contractPersonAddress').value = pt.dia_chi || '';
+            // Convert dd/mm/yyyy to yyyy-mm-dd for date input
+            const dob = pt.ngay_sinh || '';
+            if (dob && dob.includes('/')) {
+                const parts = dob.split('/');
+                if (parts.length === 3) {
+                    document.getElementById('contractPersonDOB').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                } else {
+                    document.getElementById('contractPersonDOB').value = '';
+                }
+            } else {
+                document.getElementById('contractPersonDOB').value = dob;
+            }
+            document.getElementById('contractPersonGender').value = pt.gioi_tinh || '';
+        } else {
+            clearPersonFields();
+        }
+    }
+    
+    function clearPersonFields() {
+        document.getElementById('contractPersonPhone').value = '';
+        document.getElementById('contractPersonEmail').value = '';
+        document.getElementById('contractPersonCCCD').value = '';
+        document.getElementById('contractPersonAddress').value = '';
+        document.getElementById('contractPersonDOB').value = '';
+        document.getElementById('contractPersonGender').value = '';
+    }
+    
+    function openEditContractModal(rowNumber) {
+        showLoader(true);
+        
+        // Fetch contract data from backend
+        google.script.run
+            .withSuccessHandler(response => {
+                try {
+                    showLoader(false);
+                    
+                    if (response && response.success) {
+                        const contract = response.data;
+                        
+                        // Set modal title
+                        document.getElementById('contractModalTitle').innerText = 'Sửa Hợp Đồng';
+                        
+                        // Set row number for update
+                        document.getElementById('contractRowNumber').value = rowNumber;
+                        
+                        // Determine contract type from database
+                        // Use loai_hop_dong field directly from contract data
+                        let contractType = contract.loai_hop_dong || 'Hội viên'; // Default to 'Hội viên' if not set
+                        
+                        // Normalize contract type (handle old data that might not have this field)
+                        if (!contract.loai_hop_dong) {
+                            // Fallback logic for old contracts without loai_hop_dong
+                            const isPT = allPTs.some(pt => pt.id === contract.ma_khach_hang);
+                            const isMember = allMembers.some(m => m.id === contract.ma_khach_hang);
+                            
+                            if (isPT) {
+                                contractType = 'PT';
+                            } else if (isMember) {
+                                contractType = 'Hội viên';
+                            } else if (!contract.ma_hlv || contract.ma_hlv === '') {
+                                contractType = 'PT';
+                            }
+                        }
+                        
+                        // Set contract type selector
+                        const selector = document.getElementById('contractTypeSelector');
+                        selector.querySelectorAll('.btn-segment').forEach(btn => btn.classList.remove('active'));
+                        const typeBtn = selector.querySelector(`.btn-segment[data-type="${contractType}"]`);
+                        if (typeBtn) typeBtn.classList.add('active');
+                        
+                        // Handle contract type change first
+                        handleContractTypeChange();
+                        
+                        // Populate selects
+                        const customerSelect = document.getElementById('contractCustomerSelect');
+                        const ptSelect = document.getElementById('contractPTSelect');
+                        
+                        if (contractType === 'Hội viên') {
+                            customerSelect.innerHTML = '<option value="">-- Chọn hội viên --</option>';
+                            allMembers.forEach(m => {
+                                const option = new Option(`${m.fullName} - ${m.phoneNumber}`, `${m.id}|${m.fullName}`);
+                                if (m.id === contract.ma_khach_hang) option.selected = true;
+                                customerSelect.add(option);
+                            });
+                        } else {
+                            ptSelect.innerHTML = '<option value="">-- Chọn PT --</option>';
+                            allPTs.forEach(pt => {
+                                const option = new Option(`${pt.ten_pt} - ${pt.so_dien_thoai}`, `${pt.id}|${pt.ten_pt}`);
+                                if (pt.id === contract.ma_khach_hang) option.selected = true;
+                                ptSelect.add(option);
+                            });
+                        }
+                    
+                    // Populate price list select based on contract type
+                    const filteredPriceList = allPriceList.filter(p => p.doi_tuong_ap_dung === contractType);
+                    const priceListSelect = document.getElementById('priceListSelect');
+                    priceListSelect.innerHTML = '<option value="">-- Chọn gói tập --</option>';
+                    filteredPriceList.forEach(p => {
+                        const option = new Option(p.ten_bang_gia, p.ma_bang_gia);
+                        if (p.ma_bang_gia === contract.ma_bang_gia) option.selected = true;
+                        priceListSelect.add(option);
+                    });
+                    
+                    // Fill form fields
+                    document.getElementById('contractDonGia').value = contract.don_gia || 0;
+                    document.getElementById('contractVAT').value = contract.vat || 0;
+                    document.getElementById('contractDonGiaVAT').value = contract.don_gia_vat || 0;
+                    document.getElementById('contractChietKhau').value = contract.chiet_khau || '';
+                    document.getElementById('contractSoLuong').value = contract.so_luong || 1;
+                    document.getElementById('contractTongThanhToan').value = contract.tong_thanh_toan || 0;
+                    document.getElementById('contractThoiHan').value = contract.thoi_gian || '';
+                    
+                    // Convert date formats from dd/mm/yyyy to yyyy-mm-dd
+                    const startDate = contract.thoi_gian_bat_dau || '';
+                    if (startDate) {
+                        try {
+                            if (typeof startDate === 'string' && startDate.includes('/')) {
+                                const parts = startDate.split('/');
+                                if (parts.length === 3) {
+                                    document.getElementById('contractStartDate').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                }
+                            } else if (startDate instanceof Date) {
+                                // Handle Date object
+                                const year = startDate.getFullYear();
+                                const month = ('0' + (startDate.getMonth() + 1)).slice(-2);
+                                const day = ('0' + startDate.getDate()).slice(-2);
+                                document.getElementById('contractStartDate').value = `${year}-${month}-${day}`;
+                            } else {
+                                document.getElementById('contractStartDate').value = startDate;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing start date:', e);
+                            document.getElementById('contractStartDate').value = '';
+                        }
+                    } else {
+                        document.getElementById('contractStartDate').value = '';
+                    }
+                    
+                    const endDate = contract.thoi_gian_ket_thuc || '';
+                    if (endDate) {
+                        try {
+                            if (typeof endDate === 'string' && endDate.includes('/')) {
+                                const parts = endDate.split('/');
+                                if (parts.length === 3) {
+                                    document.getElementById('contractEndDate').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                }
+                            } else if (endDate instanceof Date) {
+                                // Handle Date object
+                                const year = endDate.getFullYear();
+                                const month = ('0' + (endDate.getMonth() + 1)).slice(-2);
+                                const day = ('0' + endDate.getDate()).slice(-2);
+                                document.getElementById('contractEndDate').value = `${year}-${month}-${day}`;
+                            } else {
+                                document.getElementById('contractEndDate').value = endDate;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing end date:', e);
+                            document.getElementById('contractEndDate').value = '';
+                        }
+                    } else {
+                        document.getElementById('contractEndDate').value = '';
+                    }
+                    
+                    document.getElementById('contractStatus').value = contract.tinh_trang || 'Đang hiệu lực';
+                    
+                    // Fill person info
+                    document.getElementById('contractPersonPhone').value = contract.so_dien_thoai || '';
+                    document.getElementById('contractPersonEmail').value = contract.email || '';
+                    document.getElementById('contractPersonCCCD').value = contract.cccd || '';
+                    document.getElementById('contractPersonAddress').value = contract.dia_chi || '';
+                    
+                    const dob = contract.ngay_sinh || '';
+                    if (dob) {
+                        try {
+                            if (typeof dob === 'string' && dob.includes('/')) {
+                                const parts = dob.split('/');
+                                if (parts.length === 3) {
+                                    document.getElementById('contractPersonDOB').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                }
+                            } else if (dob instanceof Date) {
+                                // Handle Date object
+                                const year = dob.getFullYear();
+                                const month = ('0' + (dob.getMonth() + 1)).slice(-2);
+                                const day = ('0' + dob.getDate()).slice(-2);
+                                document.getElementById('contractPersonDOB').value = `${year}-${month}-${day}`;
+                            } else {
+                                document.getElementById('contractPersonDOB').value = dob;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing date of birth:', e);
+                            document.getElementById('contractPersonDOB').value = '';
+                        }
+                    } else {
+                        document.getElementById('contractPersonDOB').value = '';
+                    }
+                    
+                    document.getElementById('contractPersonGender').value = contract.gioi_tinh || '';
+                    
+                    // Show modal
+                    document.getElementById('contractModal').style.display = 'block';
+                } else {
+                    const errorMsg = response && response.message ? response.message : 'Không thể tải dữ liệu hợp đồng.';
+                    showToast(errorMsg, 'error');
+                }
+                } catch (error) {
+                    showLoader(false);
+                    console.error('Error in openEditContractModal:', error);
+                    showToast('Lỗi xử lý dữ liệu: ' + error.message, 'error');
+                }
+            })
+            .withFailureHandler(err => {
+                showLoader(false);
+                const errorMsg = err && err.message ? err.message : (err ? JSON.stringify(err) : 'Lỗi không xác định');
+                showToast('Lỗi: ' + errorMsg, 'error');
+            })
+            .getContractByRow(rowNumber);
+    }
+    
+    function handlePriceListChange() {
+        const selectedId = document.getElementById('priceListSelect').value;
+        const pkg = allPriceList.find(p => p.ma_bang_gia === selectedId);
+        if(pkg) {
+            // Xác định loại hợp đồng
+            const activeBtn = document.querySelector('#contractTypeSelector .btn-segment.active');
+            const contractType = activeBtn ? activeBtn.dataset.type : 'Hội viên';
+            
+            // Nếu là hợp đồng PT, lấy giá từ cột gia_tri, ngược lại lấy từ don_gia
+            const price = (contractType === 'PT') ? (pkg.gia_tri || 0) : (pkg.don_gia || 0);
+            
+            document.getElementById('contractDonGia').value = price;
+            document.getElementById('contractVAT').value = pkg.vat;
+            document.getElementById('contractDonGiaVAT').value = pkg.don_gia_vat;
+            document.getElementById('contractChietKhau').value = pkg.chiet_khau;
+            document.getElementById('contractThoiHan').value = pkg.thoi_han;
+            calculateTotalPayment();
+            calculateEndDate();
+        } else {
+            ['contractDonGia', 'contractVAT', 'contractDonGiaVAT', 'contractChietKhau', 'contractThoiHan', 'contractEndDate', 'contractTongThanhToan'].forEach(id => document.getElementById(id).value = '');
+        }
+    }
+    
+    function handleQuantityChange() {
+        const quantity = parseInt(document.getElementById('contractSoLuong').value, 10) || 1;
+        const container = document.getElementById('dynamicMembersContainer');
+        container.innerHTML = '';
+        
+        // Render additional member input fields (quantity - 1)
+        if (quantity > 1) {
+            for (let i = 1; i < quantity; i++) {
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                div.innerHTML = `<label for="member${i}">Thành viên ${i}</label><input type="text" id="member${i}" class="dynamic-member-field" placeholder="Nhập tên thành viên ${i}">`;
+                container.appendChild(div);
+            }
+        }
+        
+        calculateTotalPayment();
+    }
+    
+    function calculateTotalPayment() {
+        const donGia = parseFloat(document.getElementById('contractDonGia').value) || 0;
+        const soLuong = parseInt(document.getElementById('contractSoLuong').value, 10) || 1;
+        const vat = parseFloat(document.getElementById('contractVAT').value) || 0;
+        const donGiaVAT = parseFloat(document.getElementById('contractDonGiaVAT').value) || 0;
+        
+        // Formula: don_gia * so_luong + (vat * don_gia_vat)
+        const total = (donGia * soLuong) + (vat * donGiaVAT);
+        document.getElementById('contractTongThanhToan').value = total.toFixed(0);
+    }
+    
+    function calculateEndDate() {
+        const start = document.getElementById('contractStartDate').value;
+        const duration = parseInt(document.getElementById('contractThoiHan').value, 10);
+        if (start && !isNaN(duration)) {
+            const date = new Date(start);
+            date.setDate(date.getDate() + duration);
+            document.getElementById('contractEndDate').value = date.toISOString().split('T')[0];
+        }
+    }
+    function handleContractFormSubmit(e) {
+        e.preventDefault();
+        
+        // Check if we're currently rate limited
+        if (isRateLimited) {
+            return showToast("Vui lòng đợi một chút trước khi thử lại (rate limit)", 'warning');
+        }
+        
+        showLoader(true);
+        const rowNumber = document.getElementById('contractRowNumber').value;
+        
+        // Determine contract type
+        const activeBtn = document.querySelector('#contractTypeSelector .btn-segment.active');
+        const contractType = activeBtn ? activeBtn.dataset.type : 'Khách hàng';
+        
+        // Get customer/PT data based on contract type
+        let customerData;
+        if (contractType === 'Hội viên') {
+            const customerValue = document.getElementById('contractCustomerSelect').value;
+            if (!customerValue) {
+                showLoader(false);
+                return showToast("Vui lòng chọn hội viên.", 'error');
+            }
+            customerData = customerValue.split('|');
+        } else {
+            const ptValue = document.getElementById('contractPTSelect').value;
+            if (!ptValue) {
+                showLoader(false);
+                return showToast("Vui lòng chọn PT.", 'error');
+            }
+            customerData = ptValue.split('|');
+        }
+        
+        const pkg = allPriceList.find(p => p.ma_bang_gia === document.getElementById('priceListSelect').value);
+        if (!pkg) {
+            showLoader(false);
+            return showToast("Vui lòng chọn một gói tập từ bảng giá.", 'error');
+        }
+        
+        // Collect additional members from dynamic fields
+        const soLuong = parseInt(document.getElementById('contractSoLuong').value, 10) || 1;
+        const additionalMembers = [];
+        if (soLuong > 1) {
+            for (let i = 1; i < soLuong; i++) {
+                const memberName = document.getElementById(`member${i}`).value.trim();
+                if (memberName) {
+                    additionalMembers.push(`Thành viên ${i}: ${memberName}`);
+                }
+            }
+        }
+        const thanhVienList = additionalMembers.join(', ');
+        
+        // Get HLV info if it's a member contract
+        let ma_hlv = '';
+        let ten_hlv = '';
+        if (contractType === 'Hội viên') {
+            const customerId = customerData[0];
+            const member = allMembers.find(m => m.id === customerId);
+            if (member) {
+                ma_hlv = member.ptId || '';
+                ten_hlv = member.ptName || '';
+            }
+        }
+        
+        // Lấy giá trị thực tế từ form (có thể đã được điều chỉnh thủ công)
+        const donGiaValue = parseFloat(document.getElementById('contractDonGia').value) || 0;
+        const vatValue = parseFloat(document.getElementById('contractVAT').value) || 0;
+        const donGiaVatValue = parseFloat(document.getElementById('contractDonGiaVAT').value) || 0;
+        const thoiGianValue = document.getElementById('contractThoiHan').value;
+        
+        const contractData = {
+            loai_hop_dong: contractType,
+            ma_khach_hang: customerData[0], 
+            ten_khach_hang: customerData[1],
+            ma_hlv: ma_hlv, 
+            ten_hlv: ten_hlv,
+            ma_bang_gia: pkg.ma_bang_gia, 
+            ten_bang_gia: pkg.ten_bang_gia,
+            noi_dung: pkg.noi_dung, 
+            thoi_gian: thoiGianValue,
+            don_gia: donGiaValue,
+            don_vi_tinh: pkg.don_vi_tinh, 
+            vat: vatValue, 
+            don_gia_vat: donGiaVatValue,
+            chiet_khau: document.getElementById('contractChietKhau').value,
+            uu_dai: pkg.uu_dai || '',
+            so_luong: soLuong,
+            thanh_vien: thanhVienList,
+            tong_thanh_toan: document.getElementById('contractTongThanhToan').value,
+            thoi_gian_bat_dau: document.getElementById('contractStartDate').value,
+            thoi_gian_ket_thuc: document.getElementById('contractEndDate').value,
+            tinh_trang: document.getElementById('contractStatus').value,
+            so_dien_thoai: document.getElementById('contractPersonPhone').value,
+            email: document.getElementById('contractPersonEmail').value,
+            cccd: document.getElementById('contractPersonCCCD').value,
+            dia_chi: document.getElementById('contractPersonAddress').value,
+            ngay_sinh: document.getElementById('contractPersonDOB').value,
+            gioi_tinh: document.getElementById('contractPersonGender').value
+        };
+        const action = rowNumber ? 'updateContract' : 'addContract';
+        if(rowNumber) contractData.rowNumber = parseInt(rowNumber, 10);
+        
+        // Call with retry logic
+        executeWithRetry(action, contractData, 0);
+    }
+    
+    // Retry function with exponential backoff
+    function executeWithRetry(action, data, attempt) {
+        const maxRetries = 3;
+        const baseDelay = 3000; // 3 seconds
+        
+        google.script.run
+            .withSuccessHandler(response => {
+                isRateLimited = false; // Reset rate limit flag on success
+                handleServerResponse(response);
+            })
+            .withFailureHandler(err => {
+                const isRateLimitError = err && err.message && err.message.includes('429');
+                
+                if (isRateLimitError) {
+                    isRateLimited = true; // Set rate limit flag
+                    
+                    if (attempt < maxRetries) {
+                        const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff: 3s, 6s, 12s
+                        showToast(`Đang bị giới hạn tốc độ. Thử lại sau ${delay/1000}s... (${attempt + 1}/${maxRetries})`, 'warning');
+                        
+                        setTimeout(() => {
+                            executeWithRetry(action, data, attempt + 1);
+                        }, delay);
+                    } else {
+                        // Final failure - wait 30s before allowing retry
+                        showLoader(false);
+                        showToast('Đã thử 3 lần nhưng vẫn bị giới hạn. Vui lòng đợi 30 giây.', 'error');
+                        setTimeout(() => {
+                            isRateLimited = false;
+                        }, 30000);
+                    }
+                } else {
+                    // Other error
+                    isRateLimited = false;
+                    showLoader(false);
+                    const msg = err && err.message ? err.message : JSON.stringify(err);
+                    showToast('Lỗi: ' + msg, 'error');
+                }
+            })
+            [action](data);
+    }
+    
+    function confirmDeleteContract(rowNumber) { if(confirm('Bạn có chắc chắn muốn xóa hợp đồng này?')) { showLoader(true); google.script.run.withSuccessHandler(handleServerResponse).deleteContract(rowNumber); } }
+    // ...existing code...
+    function printContract(contract) {
+        if(confirm(`Bạn có muốn in hợp đồng của ${contract.customerName}?`)) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(html => {
+                showLoader(false);
+                if(html) {
+                    showToast('Đã tạo hợp đồng in! Mở tab mới...');
+                    const printWindow = window.open('', '_blank');
+                    printWindow.document.open();
+                    printWindow.document.write(html);
+                    printWindow.document.close();
+                    // Tùy chọn: tự động mở hộp thoại in
+                    setTimeout(() => { printWindow.print(); }, 500);
+                } else {
+                    showToast('Lỗi khi tạo hợp đồng in: Không có dữ liệu.', 'error');
+                }
+            }).withFailureHandler(err => {
+                showLoader(false);
+                showToast('Lỗi khi tạo hợp đồng in: ' + err.message, 'error');
+            }).printContract(contract.id);
+        }
+    }
+    
+    // =================================================================
+    // LOGIC MODULE KHÁCH HÀNG
+    // =================================================================
+    function displayMembers(members) {
+        const tableBody = document.getElementById('memberTableBody');
+        tableBody.innerHTML = '';
+        if (!members || members.length === 0) { 
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Không có dữ liệu khách hàng.</td></tr>'; 
+            return; 
+        }
+        members.forEach(member => { 
+            const memberJson = JSON.stringify(member).replace(/'/g, '&apos;');
+            
+            // Style cho hạng thành viên
+            let rankBadge = '';
+            const rank = member.hangThanhVien || 'Đồng';
+            let rankColor = '#CD7F32'; // Đồng
+            if (rank === 'Bạc') rankColor = '#C0C0C0';
+            else if (rank === 'Vàng') rankColor = '#FFD700';
+            else if (rank === 'Bạch Kim') rankColor = '#E5E4E2';
+            else if (rank === 'Kim Cương') rankColor = '#B9F2FF';
+            
+            rankBadge = `<span style="background-color: ${rankColor}; color: #000; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 12px;">${rank}</span>`;
+            
+            // Convert points to stamp icons with better spacing
+            var points = parseInt(member.diemTichLuy) || 0;
+            var stampDisplay = '';
+            if (points > 0) {
+                // Use filled circle ● or star ⭐ with proper spacing
+                if (points <= 10) {
+                    // Use star emoji with spaces for better visibility
+                    var stamps = [];
+                    for (var i = 0; i < points; i++) {
+                        stamps.push('⭐');
+                    }
+                    stampDisplay = stamps.join(' ');
+                } else {
+                    // Show 10 stars + count
+                    var stamps = [];
+                    for (var i = 0; i < 10; i++) {
+                        stamps.push('⭐');
+                    }
+                    stampDisplay = stamps.join(' ') + ` <span style="font-weight: bold; color: #333;">+${points - 10}</span>`;
+                }
+            } else {
+                stampDisplay = '<span style="color: #999;">—</span>';
+            }
+            
+            const row = `<tr>
+                <td>${member.fullName}</td>
+                <td>${member.phoneNumber}</td>
+                <td>${member.ptName || ''}</td>
+                <td style="text-align: center; font-size: 14px; line-height: 1.8;">${stampDisplay}</td>
+                <td style="text-align: center;">${rankBadge}</td>
+                <td>${member.status}</td>
+                <td>
+                    <button onclick='viewMemberContracts("${member.id}", "${member.fullName.replace(/'/g, '\\\'')}")' class="btn-icon btn-view" title="Xem hợp đồng">📋</button>
+                    <button onclick='openEditMemberModal(${memberJson})' class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick='confirmDeleteMember(${member.rowNumber})' class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                </td>
+            </tr>`;
+            tableBody.innerHTML += row; 
+        });
+    }
+    function filterMemberTable() {
+        const filter = document.getElementById('memberSearchInput').value.toLowerCase();
+        const filteredMembers = allMembers.filter(member => member.fullName.toLowerCase().includes(filter) || member.phoneNumber.toLowerCase().includes(filter) || (member.email && member.email.toLowerCase().includes(filter)));
+        displayMembers(filteredMembers);
+    }
+    function openAddMemberModal() {
+        document.getElementById('memberForm').reset();
+        document.getElementById('memberModalTitle').innerText = 'Thêm Khách Hàng Mới';
+        document.getElementById('rowNumber').value = '';
+        document.getElementById('status-group').style.display = 'none';
+        
+        // Populate PT dropdown
+        const ptSelect = document.getElementById('ptName');
+        ptSelect.innerHTML = '<option value="">-- Chọn HLV --</option>';
+        allPTs.forEach(pt => {
+            const optionValue = `${pt.id}|${pt.ten_pt}`;
+            ptSelect.add(new Option(`${pt.ten_pt} - ${pt.so_dien_thoai}`, optionValue));
+        });
+        
+        document.getElementById('memberModal').style.display = 'block';
+    }
+    function openEditMemberModal(member) {
+        document.getElementById('memberModalTitle').innerText = 'Chỉnh Sửa Thông Tin Khách Hàng';
+        document.getElementById('rowNumber').value = member.rowNumber;
+        document.getElementById('fullName').value = member.fullName;
+        document.getElementById('phoneNumber').value = member.phoneNumber;
+        document.getElementById('emergencyPhone').value = member.emergencyPhone || '';
+        document.getElementById('email').value = member.email || '';
+        document.getElementById('cccd').value = member.cccd || '';
+        document.getElementById('address').value = member.address || '';
+        document.getElementById('gender').value = member.gender || 'Nam';
+        document.getElementById('ptId').value = member.ptId || '';
+        document.getElementById('status').value = member.status || 'Đang hoạt động';
+        if(member.dateOfBirth) { const parts = member.dateOfBirth.split('/'); if (parts.length === 3) { document.getElementById('dateOfBirth').value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`; } } else { document.getElementById('dateOfBirth').value = ''; }
+        
+        // Populate PT dropdown
+        const ptSelect = document.getElementById('ptName');
+        ptSelect.innerHTML = '<option value="">-- Chọn HLV --</option>';
+        allPTs.forEach(pt => {
+            const optionValue = `${pt.id}|${pt.ten_pt}`;
+            const option = new Option(`${pt.ten_pt} - ${pt.so_dien_thoai}`, optionValue);
+            if (member.ptId === pt.id) option.selected = true;
+            ptSelect.add(option);
+        });
+        
+        document.getElementById('status-group').style.display = 'block';
+        document.getElementById('memberModal').style.display = 'block';
+    }
+    function handleMemberFormSubmit(event) {
+        event.preventDefault();
+        showLoader(true);
+        const rowNumber = document.getElementById('rowNumber').value;
+        
+        // Parse PT selection
+        const ptSelection = document.getElementById('ptName').value;
+        let ptId = '', ptName = '';
+        if (ptSelection) {
+            const parts = ptSelection.split('|');
+            ptId = parts[0];
+            ptName = parts[1];
+        }
+        
+        const memberData = {
+            fullName: document.getElementById('fullName').value,
+            phoneNumber: document.getElementById('phoneNumber').value,
+            emergencyPhone: document.getElementById('emergencyPhone').value,
+            email: document.getElementById('email').value,
+            cccd: document.getElementById('cccd').value,
+            address: document.getElementById('address').value,
+            dateOfBirth: document.getElementById('dateOfBirth').value,
+            gender: document.getElementById('gender').value,
+            ptId: ptId,
+            ptName: ptName,
+            status: document.getElementById('status').value
+        };
+        
+        // OPTIMISTIC UPDATE
+        let optimisticData = null;
+        const action = rowNumber ? 'updateMember' : 'addMember';
+        
+        if (rowNumber) {
+            // Update existing member
+            memberData.rowNumber = parseInt(rowNumber, 10);
+            const index = allMembers.findIndex(m => m.rowNumber === memberData.rowNumber);
+            if (index !== -1) {
+                const oldData = {...allMembers[index]};
+                allMembers[index] = {...allMembers[index], ...memberData};
+                displayMembers(allMembers);
+                optimisticData = {
+                    rollback: () => { allMembers[index] = oldData; }
+                };
+            }
+        } else {
+            // Add new member (tạo ID tạm)
+            const tempMember = {
+                ...memberData,
+                id: 'KH-TEMP-' + Date.now(),
+                rowNumber: allMembers.length + 2,
+                points: 0,
+                rank: 'Đồng'
+            };
+            allMembers.unshift(tempMember);
+            displayMembers(allMembers);
+            optimisticData = {
+                rollback: () => { allMembers.shift(); }
+            };
+        }
+        
+        closeModal('memberModal');
+        showLoader(false);
+        showToast('Đang lưu...', 'info');
+        
+        // Send to backend
+        google.script.run
+            .withSuccessHandler(response => {
+                showToast(response.message, response.success ? 'success' : 'error');
+                if (!response.success && optimisticData) {
+                    optimisticData.rollback();
+                    displayMembers(allMembers);
+                } else {
+                    // Reload để lấy ID thật và dữ liệu chính xác
+                    loadAdditionalDataInBackground();
+                }
+            })
+            .withFailureHandler(err => {
+                showToast('Lỗi: ' + err.message, 'error');
+                if (optimisticData) {
+                    optimisticData.rollback();
+                    displayMembers(allMembers);
+                }
+            })[action](memberData);
+    }
+    function confirmDeleteMember(rowNumber) { if (confirm('Bạn có chắc chắn muốn xóa khách hàng này? Thao tác này không thể hoàn tác.')) { showLoader(true); google.script.run.withSuccessHandler(handleServerResponse).deleteMember(rowNumber); } }
+    
+    function refreshMemberPoints(customerId, rowNumber) {
+        if (!customerId) {
+            showToast('Mã khách hàng không hợp lệ', 'error');
+            return;
+        }
+        
+        showLoader(true);
+        google.script.run
+            .withSuccessHandler(response => {
+                showLoader(false);
+                if (response.success) {
+                    showToast(`Cập nhật thành công! Điểm: ${response.points}, Hạng: ${response.rank}`, 'success');
+                    // Reload data
+                    setTimeout(() => {
+                        if (!isLoadingData) {
+                            loadInitialData();
+                        }
+                    }, 1000);
+                } else {
+                    showToast(response.message || 'Có lỗi khi cập nhật điểm', 'error');
+                }
+            })
+            .withFailureHandler(err => {
+                showLoader(false);
+                showToast('Lỗi: ' + (err.message || err), 'error');
+            })
+            .updateSingleMemberPoints(customerId, rowNumber);
+    }
+    
+    function refreshAllMemberPoints() {
+        if (!confirm('Bạn có chắc muốn đồng bộ điểm cho tất cả khách hàng?\n\nChức năng này sẽ:\n- Tính lại điểm từ tổng hợp đồng\n- Cập nhật hạng thành viên\n- Ghi kết quả vào sheet')) {
+            return;
+        }
+        
+        showLoader(true);
+        google.script.run
+            .withSuccessHandler(response => {
+                showLoader(false);
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    // Reload data to show updated points
+                    setTimeout(() => {
+                        if (!isLoadingData) {
+                            loadInitialData();
+                        }
+                    }, 1000);
+                } else {
+                    showToast(response.message || 'Có lỗi khi đồng bộ điểm', 'error');
+                }
+            })
+            .withFailureHandler(err => {
+                showLoader(false);
+                showToast('Lỗi: ' + (err.message || err), 'error');
+            })
+            .updateAllMemberPoints();
+    }
+    
+    function viewMemberContracts(memberId, memberName) {
+        // Filter contracts for this member
+        const memberContracts = allContracts.filter(contract => contract.customerId === memberId);
+        
+        if (memberContracts.length === 0) {
+            showToast(`Không tìm thấy hợp đồng nào của khách hàng: ${memberName}`, 'error');
+            return;
+        }
+        
+        // Create modal content
+        let contractsHTML = `
+            <div style="padding: 20px;">
+                <h3 style="margin-top: 0; color: #333;">Hợp đồng của ${memberName}</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mã HĐ</th>
+                                <th>Gói dịch vụ</th>
+                                <th>Ngày bắt đầu</th>
+                                <th>Ngày kết thúc</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+        
+        memberContracts.forEach(contract => {
+            const contractJson = JSON.stringify(contract);
+            contractsHTML += `
+                <tr>
+                    <td>${contract.id || ''}</td>
+                    <td>${contract.packageName}</td>
+                    <td>${contract.startDate}</td>
+                    <td>${contract.endDate}</td>
+                    <td>${contract.status}</td>
+                    <td>
+                        <button onclick='openEditContractModal(${contract.rowNumber})' class="btn-icon btn-edit" title="Sửa">✏️</button>
+                        <button onclick='printContract(${contractJson})' class="btn-icon btn-print" title="In">🖨️</button>
+                    </td>
+                </tr>`;
+        });
+        
+        contractsHTML += `
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 20px; text-align: right;">
+                    <button onclick="closeMemberContractsModal()" class="btn-primary">Đóng</button>
+                </div>
+            </div>`;
+        
+        // Create or update modal
+        let modal = document.getElementById('memberContractsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'memberContractsModal';
+            modal.className = 'modal';
+            document.body.appendChild(modal);
+        }
+        
+        modal.innerHTML = `<div class="modal-content" style="max-width: 900px;">${contractsHTML}</div>`;
+        modal.style.display = 'block';
+    }
+    
+    function closeMemberContractsModal() {
+        const modal = document.getElementById('memberContractsModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // =================================================================
+    // LOGIC MODULE PT
+    // =================================================================
+    function displayPTs(pts) {
+        const tbody = document.getElementById('ptTableBody');
+        tbody.innerHTML = '';
+        if (!pts || pts.length === 0) { 
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Không có dữ liệu PT.</td></tr>'; 
+            return; 
+        }
+        pts.forEach(p => {
+            const rowJson = JSON.stringify(p);
+            
+            // Style cho hạng PT
+            let rankBadge = '';
+            const rank = p.hangThanhVien || 'Đồng';
+            let rankColor = '#CD7F32'; // Đồng
+            if (rank === 'Bạc') rankColor = '#C0C0C0';
+            else if (rank === 'Vàng') rankColor = '#FFD700';
+            else if (rank === 'Bạch Kim') rankColor = '#E5E4E2';
+            else if (rank === 'Kim Cương') rankColor = '#B9F2FF';
+            
+            rankBadge = `<span style="background-color: ${rankColor}; color: #000; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 12px;">${rank}</span>`;
+            
+            // Convert points to star icons
+            var points = parseInt(p.diemTichLuy) || 0;
+            var stampDisplay = '';
+            if (points > 0) {
+                if (points <= 10) {
+                    var stamps = [];
+                    for (var i = 0; i < points; i++) {
+                        stamps.push('⭐');
+                    }
+                    stampDisplay = stamps.join(' ');
+                } else {
+                    var stamps = [];
+                    for (var i = 0; i < 10; i++) {
+                        stamps.push('⭐');
+                    }
+                    stampDisplay = stamps.join(' ') + ` <span style="font-weight: bold; color: #333;">+${points - 10}</span>`;
+                }
+            } else {
+                stampDisplay = '<span style="color: #999;">—</span>';
+            }
+            
+            tbody.innerHTML += `<tr>
+                <td>${p.ten_pt}</td>
+                <td>${p.so_dien_thoai || ''}</td>
+                <td>${p.email || ''}</td>
+                <td style="text-align: center; font-size: 14px; line-height: 1.8;">${stampDisplay}</td>
+                <td style="text-align: center;">${rankBadge}</td>
+                <td>${p.thoi_gian_tao || ''}</td>
+                <td>
+                    <button onclick='openEditPTModal(${rowJson})' class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick='confirmDeletePT(${p.rowNumber})' class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                </td>
+            </tr>`;
+        });
+    }
+    function filterPTTable() {
+        const filter = document.getElementById('ptSearchInput').value.toLowerCase();
+        const filtered = allPTs.filter(p => (p.ten_pt && p.ten_pt.toLowerCase().includes(filter)) || (p.so_dien_thoai && p.so_dien_thoai.toLowerCase().includes(filter)) || (p.email && p.email.toLowerCase().includes(filter)));
+        displayPTs(filtered);
+    }
+    
+    function refreshAllPTPoints() {
+        if (!confirm('Bạn có chắc muốn đồng bộ điểm cho tất cả PT?\n\nChức năng này sẽ:\n- Tính lại điểm từ tổng doanh thu\n- Cập nhật hạng PT\n- Ghi kết quả vào sheet')) {
+            return;
+        }
+        
+        showLoader(true);
+        google.script.run
+            .withSuccessHandler(response => {
+                showLoader(false);
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    setTimeout(() => {
+                        if (!isLoadingData) {
+                            loadInitialData();
+                        }
+                    }, 1000);
+                } else {
+                    showToast(response.message || 'Có lỗi khi đồng bộ điểm PT', 'error');
+                }
+            })
+            .withFailureHandler(err => {
+                showLoader(false);
+                showToast('Lỗi: ' + (err.message || err), 'error');
+            })
+            .updateAllPTPoints();
+    }
+    
+    function openAddPTModal() { document.getElementById('ptForm').reset(); document.getElementById('ptModalTitle').innerText = 'Thêm PT Mới'; document.getElementById('ptRowNumber').value = ''; document.getElementById('ptModal').style.display = 'block'; }
+    function openEditPTModal(pt) {
+        document.getElementById('ptModalTitle').innerText = 'Chỉnh sửa PT';
+        document.getElementById('ptRowNumber').value = pt.rowNumber;
+        document.getElementById('ptNameFull').value = pt.ten_pt || '';
+        document.getElementById('ptPhone').value = pt.so_dien_thoai || '';
+        document.getElementById('ptEmergencyPhone').value = pt.so_dien_thoai_khan_cap || '';
+        document.getElementById('ptEmail').value = pt.email || '';
+        document.getElementById('ptCccd').value = pt.cccd || '';
+        document.getElementById('ptAddress').value = pt.dia_chi || '';
+        if (pt.ngay_sinh) { const parts = pt.ngay_sinh.split('/'); if (parts.length === 3) document.getElementById('ptDob').value = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`; }
+        document.getElementById('ptGender').value = pt.gioi_tinh || 'Nam';
+        document.getElementById('ptModal').style.display = 'block';
+    }
+    function handlePTFormSubmit(e) {
+        e.preventDefault(); showLoader(true);
+        const rowNumber = document.getElementById('ptRowNumber').value;
+        const ptData = {
+            ten_pt: document.getElementById('ptNameFull').value,
+            so_dien_thoai: document.getElementById('ptPhone').value,
+            so_dien_thoai_khan_cap: document.getElementById('ptEmergencyPhone').value,
+            email: document.getElementById('ptEmail').value,
+            cccd: document.getElementById('ptCccd').value,
+            dia_chi: document.getElementById('ptAddress').value,
+            ngay_sinh: document.getElementById('ptDob').value,
+            gioi_tinh: document.getElementById('ptGender').value
+        };
+        const action = rowNumber ? 'updatePT' : 'addPT';
+        if (rowNumber) ptData.rowNumber = parseInt(rowNumber, 10);
+        google.script.run.withSuccessHandler(handleServerResponse)[action](ptData);
+    }
+    function confirmDeletePT(rowNumber) { if (confirm('Bạn có chắc chắn muốn xóa PT này?')) { showLoader(true); google.script.run.withSuccessHandler(handleServerResponse).deletePT(rowNumber); } }
+
+    // =================================================================
+    // LOGIC MODULE BẢNG GIÁ
+    // =================================================================
+    function displayPriceListFull(priceList) {
+        const tableBody = document.getElementById('priceListTableBody');
+        tableBody.innerHTML = '';
+        
+        // Check if we're still loading data
+        if ((!priceList || priceList.length === 0) && !window.priceListFullLoaded && !window.additionalDataLoaded) {
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top:10px;">Đang tải dữ liệu...</p></td></tr>';
+            return;
+        }
+        
+        if (!priceList || priceList.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Không có dữ liệu bảng giá.</td></tr>';
+            return;
+        }
+        priceList.forEach(item => {
+            const row = `<tr>
+                <td>${item.ma_bang_gia}</td>
+                <td>${item.ten_bang_gia}</td>
+                <td>${new Intl.NumberFormat('vi-VN').format(item.don_gia)} VNĐ</td>
+                <td>${item.don_vi_tinh}</td>
+                <td>${item.thoi_han || 'N/A'}</td>
+                <td>${item.doi_tuong_ap_dung}</td>
+                <td>
+                    <button onclick='openEditPriceListModal(${JSON.stringify(item)})' class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick='confirmDeletePriceList(${item.rowNumber})' class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                </td>
+            </tr>`;
+            tableBody.innerHTML += row;
+        });
+    }
+
+    function filterPriceListTable() {
+        const filter = document.getElementById('priceListSearchInput').value.toLowerCase();
+        const filteredList = allPriceListFull.filter(item =>
+            item.ma_bang_gia.toLowerCase().includes(filter) ||
+            item.ten_bang_gia.toLowerCase().includes(filter) ||
+            (item.doi_tuong_ap_dung && item.doi_tuong_ap_dung.toLowerCase().includes(filter))
+        );
+        displayPriceListFull(filteredList);
+    }
+
+    function openAddPriceListModal() {
+        document.getElementById('priceListForm').reset();
+        document.getElementById('priceListModalTitle').innerText = 'Thêm Bảng Giá Mới';
+        document.getElementById('priceListRowNumber').value = '';
+        document.getElementById('priceListModal').style.display = 'block';
+        // Setup VAT calculation
+        setupVATCalculation();
+    }
+
+    function openEditPriceListModal(priceItem) {
+        document.getElementById('priceListModalTitle').innerText = 'Chỉnh Sửa Bảng Giá';
+        document.getElementById('priceListRowNumber').value = priceItem.rowNumber;
+        document.getElementById('priceListCode').value = priceItem.ma_bang_gia;
+        document.getElementById('priceListName').value = priceItem.ten_bang_gia;
+        document.getElementById('priceListPrice').value = priceItem.don_gia;
+        document.getElementById('priceListUnit').value = priceItem.don_vi_tinh;
+        document.getElementById('priceListValue').value = priceItem.gia_tri || '';
+        document.getElementById('priceListDuration').value = priceItem.thoi_han || '';
+        document.getElementById('priceListVAT').value = priceItem.vat || 0;
+        document.getElementById('priceListVATPrice').value = priceItem.don_gia_vat || 0;
+        document.getElementById('priceListDiscount').value = priceItem.chiet_khau || '';
+        document.getElementById('priceListTarget').value = priceItem.doi_tuong_ap_dung;
+        document.getElementById('priceListContent').value = priceItem.noi_dung || '';
+        document.getElementById('priceListModal').style.display = 'block';
+        setupVATCalculation();
+    }
+
+    function setupVATCalculation() {
+        const priceInput = document.getElementById('priceListPrice');
+        const vatInput = document.getElementById('priceListVAT');
+        const vatPriceInput = document.getElementById('priceListVATPrice');
+        
+        function calculateVAT() {
+            const price = parseFloat(priceInput.value) || 0;
+            const vat = parseFloat(vatInput.value) || 0;
+            const vatPrice = Math.round(price * vat / 100);
+            vatPriceInput.value = vatPrice;
+        }
+        
+        priceInput.removeEventListener('input', calculateVAT);
+        vatInput.removeEventListener('input', calculateVAT);
+        priceInput.addEventListener('input', calculateVAT);
+        vatInput.addEventListener('input', calculateVAT);
+    }
+
+    function handlePriceListFormSubmit(e) {
+        e.preventDefault();
+        showLoader(true);
+        const rowNumber = document.getElementById('priceListRowNumber').value;
+        
+        const priceData = {
+            ma_bang_gia: document.getElementById('priceListCode').value,
+            ten_bang_gia: document.getElementById('priceListName').value,
+            don_gia: parseFloat(document.getElementById('priceListPrice').value) || 0,
+            don_vi_tinh: document.getElementById('priceListUnit').value,
+            gia_tri: document.getElementById('priceListValue').value,
+            thoi_han: document.getElementById('priceListDuration').value,
+            vat: parseFloat(document.getElementById('priceListVAT').value) || 0,
+            don_gia_vat: parseFloat(document.getElementById('priceListVATPrice').value) || 0,
+            chiet_khau: document.getElementById('priceListDiscount').value,
+            doi_tuong_ap_dung: document.getElementById('priceListTarget').value,
+            noi_dung: document.getElementById('priceListContent').value
+        };
+        
+        const action = rowNumber ? 'updatePriceList' : 'addPriceList';
+        if (rowNumber) priceData.rowNumber = parseInt(rowNumber, 10);
+        
+        google.script.run.withSuccessHandler(handleServerResponse)[action](priceData);
+    }
+
+    function confirmDeletePriceList(rowNumber) {
+        if (confirm('Bạn có chắc chắn muốn xóa bảng giá này?')) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(handleServerResponse).deletePriceList(rowNumber);
+        }
+    }
+
+    // =================================================================
+    // POLICY MEMBER (CHÍNH SÁCH HỘI VIÊN)
+    // =================================================================
+    function displayPolicyMembers() {
+        const tbody = document.getElementById('policy-member-tbody');
+        tbody.innerHTML = '';
+        
+        // Check if we're still loading data
+        if ((!allPolicyMembers || allPolicyMembers.length === 0) && !window.additionalDataLoaded) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top:10px;">Đang tải dữ liệu...</p></td></tr>';
+            return;
+        }
+        
+        if (!allPolicyMembers || allPolicyMembers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9">Không có dữ liệu</td></tr>';
+            return;
+        }
+        allPolicyMembers.forEach(item => {
+            const row = `<tr>
+                <td>${item.hang_thanh_vien || ''}</td>
+                <td>${item.diem_tich_luy || 0}</td>
+                <td>${item.chiet_khau_khm || ''}</td>
+                <td>${item.quyen_loi || ''}</td>
+                <td>${item.uu_dai || ''}</td>
+                <td>${item.qua_tang || ''}</td>
+                <td>${item.tinh_trang || ''}</td>
+                <td>${item.ngay_tao || ''}</td>
+                <td>
+                    <button onclick="openEditPolicyMemberModal(${item.rowNumber})" class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick="confirmDeletePolicyMember(${item.rowNumber})" class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                </td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function filterPolicyMemberTable() {
+        const query = document.getElementById('search-policy-member').value.toLowerCase();
+        const rows = document.querySelectorAll('#policy-member-tbody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function openAddPolicyMemberModal() {
+        document.getElementById('policyMemberModalTitle').innerText = 'Thêm chính sách Hội viên';
+        document.getElementById('policyMemberForm').reset();
+        document.getElementById('policyMemberRowNumber').value = '';
+        document.getElementById('policyMemberId').value = '';
+        
+        // Populate uu_dai dropdown from programs
+        populatePolicyMemberUuDai();
+        
+        // Populate qua_tang dropdown from gifts
+        populatePolicyMemberQuaTang();
+        
+        // Clear selected values
+        clearMultiSelect('policyMemberUuDaiSelect', 'policyMemberUuDaiTags');
+        clearMultiSelect('policyMemberQuaTangSelect', 'policyMemberQuaTangTags');
+        
+        document.getElementById('policyMemberModal').style.display = 'block';
+    }
+
+    function openEditPolicyMemberModal(rowNumber) {
+        const item = allPolicyMembers.find(p => p.rowNumber === rowNumber);
+        if (!item) return;
+        document.getElementById('policyMemberModalTitle').innerText = 'Sửa chính sách Hội viên';
+        document.getElementById('policyMemberRowNumber').value = item.rowNumber;
+        document.getElementById('policyMemberId').value = item.id;
+        document.getElementById('policyMemberHangThanhVien').value = item.hang_thanh_vien;
+        document.getElementById('policyMemberDiemTichLuy').value = item.diem_tich_luy || 0;
+        document.getElementById('policyMemberChietKhauKHM').value = item.chiet_khau_khm || '';
+        document.getElementById('policyMemberQuyenLoi').value = item.quyen_loi || '';
+        document.getElementById('policyMemberTinhTrang').value = item.tinh_trang || '';
+        
+        // Populate dropdowns
+        populatePolicyMemberUuDai();
+        populatePolicyMemberQuaTang();
+        
+        // Set selected values for uu_dai
+        const uuDaiValues = item.uu_dai ? item.uu_dai.split(',').map(v => v.trim()) : [];
+        setMultiSelectValues('policyMemberUuDaiSelect', 'policyMemberUuDaiTags', uuDaiValues);
+        
+        // Set selected values for qua_tang
+        const quaTangValues = item.qua_tang ? item.qua_tang.split(',').map(v => v.trim()) : [];
+        setMultiSelectValues('policyMemberQuaTangSelect', 'policyMemberQuaTangTags', quaTangValues);
+        
+        document.getElementById('policyMemberModal').style.display = 'block';
+    }
+
+    function closePolicyMemberModal() {
+        document.getElementById('policyMemberModal').style.display = 'none';
+    }
+
+    function handlePolicyMemberFormSubmit(e) {
+        e.preventDefault();
+        showLoader(true);
+        const rowNumber = document.getElementById('policyMemberRowNumber').value;
+        
+        // Get selected values from multi-select
+        const uuDaiSelect = document.getElementById('policyMemberUuDaiSelect');
+        const uuDaiValues = Array.from(uuDaiSelect.selectedOptions).map(opt => opt.value);
+        
+        const quaTangSelect = document.getElementById('policyMemberQuaTangSelect');
+        const quaTangValues = Array.from(quaTangSelect.selectedOptions).map(opt => opt.value);
+        
+        const data = {
+            hang_thanh_vien: document.getElementById('policyMemberHangThanhVien').value,
+            diem_tich_luy: parseInt(document.getElementById('policyMemberDiemTichLuy').value) || 0,
+            chiet_khau_khm: document.getElementById('policyMemberChietKhauKHM').value,
+            quyen_loi: document.getElementById('policyMemberQuyenLoi').value,
+            uu_dai: uuDaiValues.join(', '), // Join with comma
+            qua_tang: quaTangValues.join(', '), // Join with comma
+            tinh_trang: document.getElementById('policyMemberTinhTrang').value
+        };
+        const action = rowNumber ? 'updatePolicyMember' : 'addPolicyMember';
+        if (rowNumber) data.rowNumber = parseInt(rowNumber, 10);
+        google.script.run.withSuccessHandler(handleServerResponse)[action](data);
+    }
+    
+    // Helper functions for multi-select
+    function populatePolicyMemberUuDai() {
+        const select = document.getElementById('policyMemberUuDaiSelect');
+        select.innerHTML = '';
+        allPrograms.forEach(program => {
+            const option = new Option(program.ten_chuong_trinh, program.ten_chuong_trinh);
+            select.add(option);
+        });
+        setupMultiSelect('policyMemberUuDaiSelect', 'policyMemberUuDaiTags');
+    }
+    
+    function populatePolicyMemberQuaTang() {
+        const select = document.getElementById('policyMemberQuaTangSelect');
+        select.innerHTML = '';
+        allGifts.forEach(gift => {
+            const option = new Option(gift.ten_qua_tang, gift.ten_qua_tang);
+            select.add(option);
+        });
+        setupMultiSelect('policyMemberQuaTangSelect', 'policyMemberQuaTangTags');
+    }
+    
+    function setupMultiSelect(selectId, tagsId) {
+        const select = document.getElementById(selectId);
+        const tagsContainer = document.getElementById(tagsId);
+        
+        select.addEventListener('change', function() {
+            updateMultiSelectTags(selectId, tagsId);
+        });
+    }
+    
+    function updateMultiSelectTags(selectId, tagsId) {
+        const select = document.getElementById(selectId);
+        const tagsContainer = document.getElementById(tagsId);
+        const selectedOptions = Array.from(select.selectedOptions);
+        
+        tagsContainer.innerHTML = '';
+        selectedOptions.forEach((option, index) => {
+            const tag = document.createElement('span');
+            tag.className = 'multi-select-tag';
+            tag.innerHTML = `${option.text} <span class="multi-select-tag-remove" onclick="removeMultiSelectTag('${selectId}', '${tagsId}', '${option.value}')">×</span>`;
+            tagsContainer.appendChild(tag);
+        });
+    }
+    
+    function removeMultiSelectTag(selectId, tagsId, value) {
+        const select = document.getElementById(selectId);
+        const options = Array.from(select.options);
+        const option = options.find(opt => opt.value === value);
+        if (option) {
+            option.selected = false;
+            updateMultiSelectTags(selectId, tagsId);
+        }
+    }
+    
+    function setMultiSelectValues(selectId, tagsId, values) {
+        const select = document.getElementById(selectId);
+        Array.from(select.options).forEach(option => {
+            option.selected = values.includes(option.value);
+        });
+        updateMultiSelectTags(selectId, tagsId);
+    }
+    
+    function clearMultiSelect(selectId, tagsId) {
+        const select = document.getElementById(selectId);
+        Array.from(select.options).forEach(option => {
+            option.selected = false;
+        });
+        document.getElementById(tagsId).innerHTML = '';
+    }
+
+    function confirmDeletePolicyMember(rowNumber) {
+        if (confirm('Bạn có chắc chắn muốn xóa chính sách này?')) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(handleServerResponse).deletePolicyMember(rowNumber);
+        }
+    }
+
+    // =================================================================
+    // POLICY PT (CHÍNH SÁCH PT)
+    // =================================================================
+    function displayPolicyPTs() {
+        const tbody = document.getElementById('policy-pt-tbody');
+        tbody.innerHTML = '';
+        
+        // Check if we're still loading data
+        if ((!allPolicyPTs || allPolicyPTs.length === 0) && !window.additionalDataLoaded) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top:10px;">Đang tải dữ liệu...</p></td></tr>';
+            return;
+        }
+        
+        if (!allPolicyPTs || allPolicyPTs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10">Không có dữ liệu</td></tr>';
+            return;
+        }
+        allPolicyPTs.forEach(item => {
+            const row = `<tr>
+                <td>${item.hang_thanh_vien || ''}</td>
+                <td>${item.diem_tich_luy || 0}</td>
+                <td>${item.chiet_khau_khm || ''}</td>
+                <td>${item.chiet_khau_doanh_thu || ''}</td>
+                <td>${item.quyen_loi || ''}</td>
+                <td>${item.uu_dai || ''}</td>
+                <td>${item.qua_tang || ''}</td>
+                <td>${item.tinh_trang || ''}</td>
+                <td>${item.ngay_tao || ''}</td>
+                <td>
+                    <button onclick="openEditPolicyPTModal(${item.rowNumber})" class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick="confirmDeletePolicyPT(${item.rowNumber})" class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                </td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function filterPolicyPTTable() {
+        const query = document.getElementById('search-policy-pt').value.toLowerCase();
+        const rows = document.querySelectorAll('#policy-pt-tbody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function openAddPolicyPTModal() {
+        document.getElementById('policyPTModalTitle').innerText = 'Thêm chính sách PT';
+        document.getElementById('policyPTForm').reset();
+        document.getElementById('policyPTRowNumber').value = '';
+        document.getElementById('policyPTId').value = '';
+        
+        // Populate uu_dai dropdown from programs
+        populatePolicyPTUuDai();
+        
+        // Populate qua_tang dropdown from gifts
+        populatePolicyPTQuaTang();
+        
+        // Clear selected values
+        clearMultiSelect('policyPTUuDaiSelect', 'policyPTUuDaiTags');
+        clearMultiSelect('policyPTQuaTangSelect', 'policyPTQuaTangTags');
+        
+        document.getElementById('policyPTModal').style.display = 'block';
+    }
+
+    function openEditPolicyPTModal(rowNumber) {
+        const item = allPolicyPTs.find(p => p.rowNumber === rowNumber);
+        if (!item) return;
+        document.getElementById('policyPTModalTitle').innerText = 'Sửa chính sách PT';
+        document.getElementById('policyPTRowNumber').value = item.rowNumber;
+        document.getElementById('policyPTId').value = item.id;
+        document.getElementById('policyPTHangThanhVien').value = item.hang_thanh_vien;
+        document.getElementById('policyPTDiemTichLuy').value = item.diem_tich_luy || 0;
+        document.getElementById('policyPTChietKhauKHM').value = item.chiet_khau_khm || '';
+        document.getElementById('policyPTChietKhauDoanhThu').value = item.chiet_khau_doanh_thu || '';
+        document.getElementById('policyPTQuyenLoi').value = item.quyen_loi || '';
+        document.getElementById('policyPTTinhTrang').value = item.tinh_trang || '';
+        
+        // Populate dropdowns
+        populatePolicyPTUuDai();
+        populatePolicyPTQuaTang();
+        
+        // Set selected values for uu_dai
+        const uuDaiValues = item.uu_dai ? item.uu_dai.split(',').map(v => v.trim()) : [];
+        setMultiSelectValues('policyPTUuDaiSelect', 'policyPTUuDaiTags', uuDaiValues);
+        
+        // Set selected values for qua_tang
+        const quaTangValues = item.qua_tang ? item.qua_tang.split(',').map(v => v.trim()) : [];
+        setMultiSelectValues('policyPTQuaTangSelect', 'policyPTQuaTangTags', quaTangValues);
+        
+        document.getElementById('policyPTModal').style.display = 'block';
+    }
+
+    function closePolicyPTModal() {
+        document.getElementById('policyPTModal').style.display = 'none';
+    }
+
+    function handlePolicyPTFormSubmit(e) {
+        e.preventDefault();
+        showLoader(true);
+        const rowNumber = document.getElementById('policyPTRowNumber').value;
+        
+        // Get selected values from multi-select
+        const uuDaiSelect = document.getElementById('policyPTUuDaiSelect');
+        const uuDaiValues = Array.from(uuDaiSelect.selectedOptions).map(opt => opt.value);
+        
+        const quaTangSelect = document.getElementById('policyPTQuaTangSelect');
+        const quaTangValues = Array.from(quaTangSelect.selectedOptions).map(opt => opt.value);
+        
+        const data = {
+            hang_thanh_vien: document.getElementById('policyPTHangThanhVien').value,
+            diem_tich_luy: parseInt(document.getElementById('policyPTDiemTichLuy').value) || 0,
+            chiet_khau_khm: document.getElementById('policyPTChietKhauKHM').value,
+            chiet_khau_doanh_thu: document.getElementById('policyPTChietKhauDoanhThu').value,
+            quyen_loi: document.getElementById('policyPTQuyenLoi').value,
+            uu_dai: uuDaiValues.join(', '), // Join with comma
+            qua_tang: quaTangValues.join(', '), // Join with comma
+            tinh_trang: document.getElementById('policyPTTinhTrang').value
+        };
+        const action = rowNumber ? 'updatePolicyPT' : 'addPolicyPT';
+        if (rowNumber) data.rowNumber = parseInt(rowNumber, 10);
+        google.script.run.withSuccessHandler(handleServerResponse)[action](data);
+    }
+    
+    // Helper functions for PolicyPT multi-select
+    function populatePolicyPTUuDai() {
+        const select = document.getElementById('policyPTUuDaiSelect');
+        select.innerHTML = '<option disabled>-- Chọn chương trình --</option>';
+        allPrograms.forEach(program => {
+            const option = new Option(program.ten_chuong_trinh, program.ten_chuong_trinh);
+            select.add(option);
+        });
+        setupMultiSelect('policyPTUuDaiSelect', 'policyPTUuDaiTags');
+    }
+    
+    function populatePolicyPTQuaTang() {
+        const select = document.getElementById('policyPTQuaTangSelect');
+        select.innerHTML = '<option disabled>-- Chọn quà tặng --</option>';
+        allGifts.forEach(gift => {
+            const option = new Option(gift.ten_qua_tang, gift.ten_qua_tang);
+            select.add(option);
+        });
+        setupMultiSelect('policyPTQuaTangSelect', 'policyPTQuaTangTags');
+    }
+
+    function confirmDeletePolicyPT(rowNumber) {
+        if (confirm('Bạn có chắc chắn muốn xóa chính sách này?')) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(handleServerResponse).deletePolicyPT(rowNumber);
+        }
+    }
+
+    // =================================================================
+    // PROGRAM (CHƯƠNG TRÌNH)
+    // =================================================================
+    function displayPrograms() {
+        const tbody = document.getElementById('program-tbody');
+        tbody.innerHTML = '';
+        
+        // Check if we're still loading data
+        if ((!allPrograms || allPrograms.length === 0) && !window.additionalDataLoaded) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top:10px;">Đang tải dữ liệu...</p></td></tr>';
+            return;
+        }
+        
+        if (!allPrograms || allPrograms.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8">Không có dữ liệu</td></tr>';
+            return;
+        }
+        allPrograms.forEach(item => {
+            const row = `<tr>
+                <td>${item.ten_chuong_trinh || ''}</td>
+                <td>${item.mo_ta || ''}</td>
+                <td>${item.ngay_bat_dau || ''}</td>
+                <td>${item.ngay_ket_thuc || ''}</td>
+                <td>${item.doi_tuong_ap_dung || ''}</td>
+                <td>${item.ngay_tao || ''}</td>
+                <td>${item.nguoi_tao || ''}</td>
+                <td>
+                    <button onclick="openEditProgramModal(${item.rowNumber})" class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick="confirmDeleteProgram(${item.rowNumber})" class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                </td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function filterProgramTable() {
+        const query = document.getElementById('search-program').value.toLowerCase();
+        const rows = document.querySelectorAll('#program-tbody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function openAddProgramModal() {
+        document.getElementById('programModalTitle').innerText = 'Thêm chương trình';
+        document.getElementById('programForm').reset();
+        document.getElementById('programRowNumber').value = '';
+        document.getElementById('programId').value = '';
+        document.getElementById('programModal').style.display = 'block';
+    }
+
+    function openEditProgramModal(rowNumber) {
+        const item = allPrograms.find(p => p.rowNumber === rowNumber);
+        if (!item) return;
+        document.getElementById('programModalTitle').innerText = 'Sửa chương trình';
+        document.getElementById('programRowNumber').value = item.rowNumber;
+        document.getElementById('programId').value = item.id;
+        document.getElementById('programTenChuongTrinh').value = item.ten_chuong_trinh;
+        document.getElementById('programMoTa').value = item.mo_ta || '';
+        // Convert DD/MM/YYYY to YYYY-MM-DD for date input
+        if (item.ngay_bat_dau) {
+            const parts = item.ngay_bat_dau.split('/');
+            if (parts.length === 3) document.getElementById('programNgayBatDau').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        if (item.ngay_ket_thuc) {
+            const parts = item.ngay_ket_thuc.split('/');
+            if (parts.length === 3) document.getElementById('programNgayKetThuc').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        document.getElementById('programDoiTuongApDung').value = item.doi_tuong_ap_dung || '';
+        document.getElementById('programModal').style.display = 'block';
+    }
+
+    function closeProgramModal() {
+        document.getElementById('programModal').style.display = 'none';
+    }
+
+    function handleProgramFormSubmit(e) {
+        e.preventDefault();
+        showLoader(true);
+        const rowNumber = document.getElementById('programRowNumber').value;
+        const data = {
+            ten_chuong_trinh: document.getElementById('programTenChuongTrinh').value,
+            mo_ta: document.getElementById('programMoTa').value,
+            ngay_bat_dau: document.getElementById('programNgayBatDau').value,
+            ngay_ket_thuc: document.getElementById('programNgayKetThuc').value,
+            doi_tuong_ap_dung: document.getElementById('programDoiTuongApDung').value
+        };
+        const action = rowNumber ? 'updateProgram' : 'addProgram';
+        if (rowNumber) data.rowNumber = parseInt(rowNumber, 10);
+        google.script.run.withSuccessHandler(handleServerResponse)[action](data);
+    }
+
+    function confirmDeleteProgram(rowNumber) {
+        if (confirm('Bạn có chắc chắn muốn xóa chương trình này?')) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(handleServerResponse).deleteProgram(rowNumber);
+        }
+    }
+
+    // =================================================================
+    // GIFT (ƯU ĐÃI/QUÀ TẶNG)
+    // =================================================================
+    function displayGifts() {
+        const tbody = document.getElementById('gift-tbody');
+        tbody.innerHTML = '';
+        
+        // Check if we're still loading data
+        if ((!allGifts || allGifts.length === 0) && !window.additionalDataLoaded) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top:10px;">Đang tải dữ liệu...</p></td></tr>';
+            return;
+        }
+        
+        if (!allGifts || allGifts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9">Không có dữ liệu</td></tr>';
+            return;
+        }
+        allGifts.forEach(item => {
+            const row = `<tr>
+                <td>${item.ma_qua_tang || ''}</td>
+                <td>${item.ten_qua_tang || ''}</td>
+                <td>${item.loai_hinh || ''}</td>
+                <td>${item.mo_ta || ''}</td>
+                <td>${item.gia_tri ? item.gia_tri.toLocaleString('vi-VN') : '0'}</td>
+                <td>${item.so_luong || 0}</td>
+                <td>${item.dieu_kien_ap_dung || ''}</td>
+                <td>${item.ngay_tao || ''}</td>
+                <td>
+                    <button onclick="openEditGiftModal(${item.rowNumber})" class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick="confirmDeleteGift(${item.rowNumber})" class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                </td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function filterGiftTable() {
+        const query = document.getElementById('search-gift').value.toLowerCase();
+        const rows = document.querySelectorAll('#gift-tbody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function openAddGiftModal() {
+        document.getElementById('giftModalTitle').innerText = 'Thêm ưu đãi/quà tặng';
+        document.getElementById('giftForm').reset();
+        document.getElementById('giftRowNumber').value = '';
+        document.getElementById('giftId').value = '';
+        document.getElementById('giftModal').style.display = 'block';
+    }
+
+    function openEditGiftModal(rowNumber) {
+        const item = allGifts.find(g => g.rowNumber === rowNumber);
+        if (!item) return;
+        document.getElementById('giftModalTitle').innerText = 'Sửa ưu đãi/quà tặng';
+        document.getElementById('giftRowNumber').value = item.rowNumber;
+        document.getElementById('giftId').value = item.id;
+        document.getElementById('giftMaQuaTang').value = item.ma_qua_tang;
+        document.getElementById('giftTenQuaTang').value = item.ten_qua_tang;
+        document.getElementById('giftLoaiHinh').value = item.loai_hinh;
+        document.getElementById('giftMoTa').value = item.mo_ta || '';
+        document.getElementById('giftGiaTri').value = item.gia_tri || 0;
+        document.getElementById('giftSoLuong').value = item.so_luong || 0;
+        document.getElementById('giftDieuKienApDung').value = item.dieu_kien_ap_dung || '';
+        document.getElementById('giftModal').style.display = 'block';
+    }
+
+    function closeGiftModal() {
+        document.getElementById('giftModal').style.display = 'none';
+    }
+
+    function handleGiftFormSubmit(e) {
+        e.preventDefault();
+        showLoader(true);
+        const rowNumber = document.getElementById('giftRowNumber').value;
+        const data = {
+            ma_qua_tang: document.getElementById('giftMaQuaTang').value,
+            ten_qua_tang: document.getElementById('giftTenQuaTang').value,
+            loai_hinh: document.getElementById('giftLoaiHinh').value,
+            mo_ta: document.getElementById('giftMoTa').value,
+            gia_tri: parseInt(document.getElementById('giftGiaTri').value) || 0,
+            so_luong: parseInt(document.getElementById('giftSoLuong').value) || 0,
+            dieu_kien_ap_dung: document.getElementById('giftDieuKienApDung').value
+        };
+        const action = rowNumber ? 'updateGift' : 'addGift';
+        if (rowNumber) data.rowNumber = parseInt(rowNumber, 10);
+        google.script.run.withSuccessHandler(handleServerResponse)[action](data);
+    }
+
+    function confirmDeleteGift(rowNumber) {
+        if (confirm('Bạn có chắc chắn muốn xóa ưu đãi/quà tặng này?')) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(handleServerResponse).deleteGift(rowNumber);
+        }
+    }
+
+    // =================================================================
+    // SETTINGS (CÀI ĐẶT)
+    // =================================================================
+    function displaySettings() {
+        const tbody = document.getElementById('settings-tbody');
+        tbody.innerHTML = '';
+        if (!allSettings || allSettings.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9">Không có dữ liệu</td></tr>';
+            return;
+        }
+        allSettings.forEach(item => {
+            const row = `<tr>
+                <td>${item.loai_hinh || ''}</td>
+                <td>${item.gia_tri || ''}</td>
+                <td>${item.so_luong || 0}</td>
+                <td>${item.quy_doi || ''}</td>
+                <td>${item.doi_tuong || ''}</td>
+                <td>${item.tinh_trang || ''}</td>
+                <td>${item.ngay_tao || ''}</td>
+                <td>${item.nguoi_tao || ''}</td>
+                <td>
+                    <button onclick="openEditSettingModal(${item.rowNumber})" class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick="confirmDeleteSetting(${item.rowNumber})" class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                </td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function filterSettingsTable() {
+        const query = document.getElementById('search-settings').value.toLowerCase();
+        const rows = document.querySelectorAll('#settings-tbody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function openAddSettingModal() {
+        document.getElementById('settingsModalTitle').innerText = 'Thêm cài đặt';
+        document.getElementById('settingsForm').reset();
+        document.getElementById('settingsRowNumber').value = '';
+        document.getElementById('settingsId').value = '';
+        document.getElementById('settingsModal').style.display = 'block';
+    }
+
+    function openEditSettingModal(rowNumber) {
+        const item = allSettings.find(s => s.rowNumber === rowNumber);
+        if (!item) return;
+        document.getElementById('settingsModalTitle').innerText = 'Sửa cài đặt';
+        document.getElementById('settingsRowNumber').value = item.rowNumber;
+        document.getElementById('settingsId').value = item.id;
+        document.getElementById('settingsLoaiHinh').value = item.loai_hinh;
+        document.getElementById('settingsGiaTri').value = item.gia_tri || '';
+        document.getElementById('settingsSoLuong').value = item.so_luong || 0;
+        document.getElementById('settingsQuyDoi').value = item.quy_doi || '';
+        document.getElementById('settingsDoiTuong').value = item.doi_tuong || '';
+        document.getElementById('settingsTinhTrang').value = item.tinh_trang || '';
+        document.getElementById('settingsModal').style.display = 'block';
+    }
+
+    function closeSettingsModal() {
+        document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    function handleSettingsFormSubmit(e) {
+        e.preventDefault();
+        showLoader(true);
+        const rowNumber = document.getElementById('settingsRowNumber').value;
+        const data = {
+            loai_hinh: document.getElementById('settingsLoaiHinh').value,
+            gia_tri: document.getElementById('settingsGiaTri').value,
+            so_luong: parseFloat(document.getElementById('settingsSoLuong').value) || 0,
+            quy_doi: document.getElementById('settingsQuyDoi').value,
+            doi_tuong: document.getElementById('settingsDoiTuong').value,
+            tinh_trang: document.getElementById('settingsTinhTrang').value
+        };
+        const action = rowNumber ? 'updateSetting' : 'addSetting';
+        if (rowNumber) data.rowNumber = parseInt(rowNumber, 10);
+        google.script.run.withSuccessHandler(handleServerResponse)[action](data);
+    }
+
+    function confirmDeleteSetting(rowNumber) {
+        if (confirm('Bạn có chắc chắn muốn xóa cài đặt này?')) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(handleServerResponse).deleteSetting(rowNumber);
+        }
+    }
+
+    // =================================================================
+    // RECEIPT (PHIẾU THU)
+    // =================================================================
+    function displayReceipts() {
+        const tbody = document.getElementById('receipt-tbody');
+        tbody.innerHTML = '';
+        
+        // Check if we're still loading data
+        if ((!allReceipts || allReceipts.length === 0) && !window.additionalDataLoaded) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top:10px;">Đang tải dữ liệu...</p></td></tr>';
+            return;
+        }
+        
+        if (!allReceipts || allReceipts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Không có dữ liệu phiếu thu.</td></tr>';
+            return;
+        }
+        allReceipts.forEach(item => {
+            // Format số tiền
+            const formattedAmount = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.tong_thu || 0);
+            
+            // Status badge
+            let statusBadge = '';
+            if (item.tinh_trang === 'Đã thu') {
+                statusBadge = '<span style="background-color: #28a745; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">Đã thu</span>';
+            } else if (item.tinh_trang === 'Chờ xác nhận') {
+                statusBadge = '<span style="background-color: #ffc107; color: #000; padding: 3px 8px; border-radius: 12px; font-size: 12px;">Chờ xác nhận</span>';
+            } else {
+                statusBadge = '<span style="background-color: #dc3545; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">Đã hủy</span>';
+            }
+            
+            const row = `<tr>
+                <td>${item.id || ''}</td>
+                <td>${item.ma_hop_dong || ''}</td>
+                <td>${item.ten_khach_hang || ''}</td>
+                <td style="text-align: right; font-weight: 600;">${formattedAmount}</td>
+                <td style="text-align: center;">${item.lan_thu || 1}</td>
+                <td>${item.thoi_gian_tao || ''}</td>
+                <td style="text-align: center;">${statusBadge}</td>
+                <td>
+                    <button onclick="openEditReceiptModal(${item.rowNumber})" class="btn-icon btn-edit" title="Sửa">✏️</button>
+                    <button onclick="confirmDeleteReceipt(${item.rowNumber})" class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                    <button onclick='printReceiptFromList(${JSON.stringify(item)})' class="btn-icon btn-print" title="In phiếu thu">🖨️</button>
+                </td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function filterReceiptTable() {
+        const query = document.getElementById('search-receipt').value.toLowerCase();
+        const rows = document.querySelectorAll('#receipt-tbody tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function openAddReceiptModal() {
+        document.getElementById('receiptModalTitle').innerText = 'Thêm Phiếu Thu';
+        document.getElementById('receiptForm').reset();
+        document.getElementById('receiptRowNumber').value = '';
+        document.getElementById('receiptId').value = '';
+        
+        // Populate contract dropdown
+        const contractSelect = document.getElementById('receiptContractId');
+        contractSelect.innerHTML = '<option value="">-- Chọn hợp đồng --</option>';
+        allContracts.forEach(contract => {
+            const option = new Option(
+                `${contract.id} - ${contract.customerName} (${contract.packageName})`,
+                JSON.stringify({
+                    contractId: contract.id,
+                    customerId: contract.customerId,
+                    customerName: contract.customerName,
+                    phone: contract.phoneNumber || '',
+                    email: contract.email || '',
+                    cccd: contract.cccd || '',
+                    totalPayment: contract.totalPayment || 0,
+                    remainingPayment: contract.remainingPayment || 0
+                })
+            );
+            contractSelect.add(option);
+        });
+        
+        // Add event listener for contract selection
+        contractSelect.addEventListener('change', handleReceiptContractChange);
+        
+        document.getElementById('receiptModal').style.display = 'block';
+    }
+
+    function handleReceiptContractChange() {
+        const selectValue = document.getElementById('receiptContractId').value;
+        if (!selectValue) {
+            document.getElementById('receiptCustomerId').value = '';
+            document.getElementById('receiptCustomerName').value = '';
+            document.getElementById('receiptPhone').value = '';
+            document.getElementById('receiptEmail').value = '';
+            document.getElementById('receiptCCCD').value = '';
+            document.getElementById('receiptContractTotal').value = '';
+            return;
+        }
+        
+        try {
+            const data = JSON.parse(selectValue);
+            document.getElementById('receiptCustomerId').value = data.customerId || '';
+            document.getElementById('receiptCustomerName').value = data.customerName || '';
+            document.getElementById('receiptPhone').value = data.phone || '';
+            document.getElementById('receiptEmail').value = data.email || '';
+            document.getElementById('receiptCCCD').value = data.cccd || '';
+            
+            // Display remaining payment (con_phai_thu) instead of total payment
+            const remainingPayment = data.remainingPayment || 0;
+            const formattedTotal = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(remainingPayment);
+            document.getElementById('receiptContractTotal').value = formattedTotal;
+        } catch (e) {
+            console.error('Error parsing contract data:', e);
+        }
+    }
+
+    function openEditReceiptModal(rowNumber) {
+        const item = allReceipts.find(r => r.rowNumber === rowNumber);
+        if (!item) return;
+        
+        document.getElementById('receiptModalTitle').innerText = 'Sửa Phiếu Thu';
+        document.getElementById('receiptRowNumber').value = item.rowNumber;
+        document.getElementById('receiptId').value = item.id;
+        
+        // Populate contract dropdown
+        const contractSelect = document.getElementById('receiptContractId');
+        contractSelect.innerHTML = '<option value="">-- Chọn hợp đồng --</option>';
+        allContracts.forEach(contract => {
+            const option = new Option(
+                `${contract.id} - ${contract.customerName} (${contract.packageName})`,
+                JSON.stringify({
+                    contractId: contract.id,
+                    customerId: contract.customerId,
+                    customerName: contract.customerName,
+                    phone: contract.phoneNumber || '',
+                    email: contract.email || '',
+                    cccd: contract.cccd || '',
+                    totalPayment: contract.totalPayment || 0
+                })
+            );
+            if (contract.id === item.ma_hop_dong) {
+                option.selected = true;
+            }
+            contractSelect.add(option);
+        });
+        
+        document.getElementById('receiptCustomerId').value = item.ma_khach_hang || '';
+        document.getElementById('receiptCustomerName').value = item.ten_khach_hang || '';
+        document.getElementById('receiptPhone').value = item.so_dien_thoai || '';
+        document.getElementById('receiptEmail').value = item.email || '';
+        document.getElementById('receiptCCCD').value = item.cccd || '';
+        
+        // Display contract total payment for the selected contract
+        const selectedContract = allContracts.find(c => c.id === item.ma_hop_dong);
+        if (selectedContract) {
+            const formattedTotal = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(selectedContract.totalPayment || 0);
+            document.getElementById('receiptContractTotal').value = formattedTotal;
+        }
+        
+        document.getElementById('receiptTotalAmount').value = item.tong_thu || 0;
+        document.getElementById('receiptPaymentCount').value = item.lan_thu || 1;
+        document.getElementById('receiptStatus').value = item.tinh_trang || 'Đã thu';
+        
+        document.getElementById('receiptModal').style.display = 'block';
+    }
+
+    function closeReceiptModal() {
+        document.getElementById('receiptModal').style.display = 'none';
+    }
+
+    // New function to create receipt from contract module
+    function openCreateReceiptFromContract(contract) {
+        // Switch to receipt view
+        switchView('receipt');
+        
+        // Wait for view to load, then open modal with pre-filled data
+        setTimeout(() => {
+            document.getElementById('receiptModalTitle').innerText = 'Thêm Phiếu Thu';
+            document.getElementById('receiptForm').reset();
+            document.getElementById('receiptRowNumber').value = '';
+            document.getElementById('receiptId').value = '';
+            
+            // Populate contract dropdown
+            const contractSelect = document.getElementById('receiptContractId');
+            contractSelect.innerHTML = '<option value="">-- Chọn hợp đồng --</option>';
+            
+            allContracts.forEach(c => {
+                const option = new Option(
+                    `${c.id} - ${c.customerName} (${c.packageName})`,
+                    JSON.stringify({
+                        contractId: c.id,
+                        customerId: c.customerId,
+                        customerName: c.customerName,
+                        phone: c.phoneNumber || '',
+                        email: c.email || '',
+                        cccd: c.cccd || '',
+                        totalPayment: c.totalPayment || 0,
+                        remainingPayment: c.remainingPayment || 0
+                    })
+                );
+                // Pre-select the contract from which we're creating the receipt
+                if (c.id === contract.id) {
+                    option.selected = true;
+                }
+                contractSelect.add(option);
+            });
+            
+            // Pre-fill customer information
+            document.getElementById('receiptCustomerId').value = contract.customerId || '';
+            document.getElementById('receiptCustomerName').value = contract.customerName || '';
+            document.getElementById('receiptPhone').value = contract.phoneNumber || '';
+            document.getElementById('receiptEmail').value = contract.email || '';
+            document.getElementById('receiptCCCD').value = contract.cccd || '';
+            
+            // Pre-fill remaining payment (con_phai_thu)
+            const formattedTotal = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(contract.remainingPayment || 0);
+            document.getElementById('receiptContractTotal').value = formattedTotal;
+            
+            // Add event listener for contract selection
+            contractSelect.addEventListener('change', handleReceiptContractChange);
+            
+            document.getElementById('receiptModal').style.display = 'block';
+        }, 300);
+    }
+
+    function handleReceiptFormSubmit(e) {
+        e.preventDefault();
+        showLoader(true);
+        const rowNumber = document.getElementById('receiptRowNumber').value;
+        
+        const contractValue = document.getElementById('receiptContractId').value;
+        
+        let contractData;
+        try {
+            contractData = JSON.parse(contractValue);
+        } catch (e) {
+            // Fallback for old format (pipe-delimited)
+            const parts = contractValue.split('|');
+            contractData = {
+                contractId: parts[0] || '',
+                customerId: parts[1] || '',
+                customerName: parts[2] || '',
+                phone: '',
+                email: '',
+                cccd: ''
+            };
+        }
+        
+        const data = {
+            ma_hop_dong: contractData.contractId,
+            ma_khach_hang: contractData.customerId || document.getElementById('receiptCustomerId').value,
+            ten_khach_hang: contractData.customerName || document.getElementById('receiptCustomerName').value,
+            so_dien_thoai: contractData.phone || document.getElementById('receiptPhone').value,
+            email: contractData.email || document.getElementById('receiptEmail').value,
+            cccd: contractData.cccd || document.getElementById('receiptCCCD').value,
+            tong_thu: parseFloat(document.getElementById('receiptTotalAmount').value) || 0,
+            lan_thu: parseInt(document.getElementById('receiptPaymentCount').value) || 1,
+            tinh_trang: document.getElementById('receiptStatus').value
+        };
+        
+        const action = rowNumber ? 'updateReceipt' : 'addReceipt';
+        if (rowNumber) data.rowNumber = parseInt(rowNumber, 10);
+        google.script.run.withSuccessHandler(handleServerResponse)[action](data);
+    }
+
+    function confirmDeleteReceipt(rowNumber) {
+        if (confirm('Bạn có chắc chắn muốn xóa phiếu thu này?')) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(handleServerResponse).deleteReceipt(rowNumber);
+        }
+    }
+
+    function printReceiptFromList(receiptData) {
+        showLoader(true);
+        google.script.run
+            .withSuccessHandler(function(htmlOutput) {
+                showLoader(false);
+                var newWindow = window.open('', '_blank', 'width=800,height=600');
+                newWindow.document.write(htmlOutput);
+                newWindow.document.close();
+                setTimeout(function() {
+                    newWindow.print();
+                }, 500);
+            })
+            .withFailureHandler(function(error) {
+                showLoader(false);
+                showToast('Lỗi in phiếu thu: ' + error.message, 'error');
+            })
+            .printReceipt(receiptData);
+    }
+
+    // Setup search for receipts
+    const searchReceipt = document.getElementById('search-receipt');
+    if (searchReceipt) searchReceipt.addEventListener('input', filterReceiptTable);
+    
+    const receiptForm = document.getElementById('receiptForm');
+    if (receiptForm) receiptForm.addEventListener('submit', handleReceiptFormSubmit);
+
+</script>

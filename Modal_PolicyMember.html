@@ -1,0 +1,81 @@
+<div id="policyMemberModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="policyMemberModalTitle">Thêm chính sách Hội viên</h2>
+      <span class="close" onclick="closePolicyMemberModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <form id="policyMemberForm">
+        <input type="hidden" id="policyMemberRowNumber">
+        <input type="hidden" id="policyMemberId">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="policyMemberHangThanhVien">Hạng thành viên <span class="required">*</span></label>
+            <select id="policyMemberHangThanhVien" required>
+              <option value="">-- Chọn hạng --</option>
+              <option value="Đồng">Đồng</option>
+              <option value="Bạc">Bạc</option>
+              <option value="Vàng">Vàng</option>
+              <option value="Bạch Kim">Bạch Kim</option>
+              <option value="Kim Cương">Kim Cương</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="policyMemberDiemTichLuy">Điểm tích lũy</label>
+            <input type="number" id="policyMemberDiemTichLuy" min="0" value="0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="policyMemberChietKhauKHM">Chiết khấu KHM</label>
+            <input type="text" id="policyMemberChietKhauKHM" placeholder="VD: 5%">
+          </div>
+          <div class="form-group">
+            <label for="policyMemberTinhTrang">Tình trạng</label>
+            <select id="policyMemberTinhTrang">
+              <option value="Đang áp dụng">Đang áp dụng</option>
+              <option value="Tạm ngưng">Tạm ngưng</option>
+              <option value="Ngừng áp dụng">Ngừng áp dụng</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="policyMemberQuyenLoi">Quyền lợi</label>
+          <textarea id="policyMemberQuyenLoi" rows="3" placeholder="Mô tả quyền lợi của hạng thành viên này"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="policyMemberUuDaiSelect">
+            <span class="label-icon">🎁</span> Ưu đãi (Chương trình)
+          </label>
+          <div class="multi-select-wrapper">
+            <div class="multi-select-tags" id="policyMemberUuDaiTags"></div>
+            <select id="policyMemberUuDaiSelect" class="multi-select-dropdown" multiple>
+              <option disabled>-- Chọn chương trình --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="policyMemberQuaTangSelect">
+            <span class="label-icon">🎉</span> Quà tặng
+          </label>
+          <div class="multi-select-wrapper">
+            <div class="multi-select-tags" id="policyMemberQuaTangTags"></div>
+            <select id="policyMemberQuaTangSelect" class="multi-select-dropdown" multiple>
+              <option disabled>-- Chọn quà tặng --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closePolicyMemberModal()">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

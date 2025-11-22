@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <title>Biên Lai Thu Tiền - Lusty Fit</title>
+    <meta charset="UTF-8">
+    <style>
+        /* ========================================= */
+        /*         CÁC STYLE CHO BẢN IN             */
+        /* ========================================= */
+        body {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 13pt;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: #e0e0e0;
+        }
+        
+        .page-wrapper {
+            width: 21cm;
+            min-height: 29.7cm;
+            margin: 20px auto;
+            padding: 2cm;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Watermark (Logo chìm) */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            z-index: 1;
+            opacity: 0.08;
+            pointer-events: none;
+            width: 80%;
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .bold { font-weight: bold; }
+        .italic { font-style: italic; }
+        
+        /* --- Header --- */
+        .header {
+            width: 100%;
+            margin-bottom: 25px;
+            border-bottom: 2px solid black;
+            padding-bottom: 10px;
+        }
+        .header-info p {
+            margin: 3px 0;
+            line-height: 1.4;
+        }
+        
+        .main-title {
+            text-align: center;
+            margin: 25px 0;
+            font-size: 20pt;
+            font-weight: bold;
+        }
+        
+        /* --- Tables --- */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 0; /* No margin to connect with the table below */
+        }
+        .info-table td {
+            border: 1px solid black;
+            padding: 8px;
+            vertical-align: top;
+            line-height: 1.8;
+        }
+        
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+            margin-top: -1px; /* Overlap border to make it look connected */
+        }
+        .details-table th, .details-table td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+        .details-table th {
+            font-weight: bold;
+        }
+        .details-table .data-row {
+            height: 40px; /* Give some space for data */
+        }
+
+        .total-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: -1px; /* Overlap border */
+        }
+        .total-table td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+        .total-table .label-col {
+            width: 20%;
+        }
+        .total-table .amount-col {
+            width: 30%;
+        }
+
+        /* --- Notes & Signature --- */
+        .notes-section {
+            margin-top: 20px;
+        }
+        .notes-section p {
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 5px;
+        }
+        .notes-section ol {
+            margin: 0;
+            padding-left: 30px;
+            font-size: 12pt;
+        }
+        .notes-section li {
+            margin-bottom: 5px;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 60px;
+            text-align: center;
+        }
+        .signer-block {
+            width: 40%;
+        }
+        .signer-block p {
+            margin: 5px 0;
+        }
+        .signer-block .role {
+            font-weight: bold;
+            font-size: 14pt;
+        }
+        .signer-block .signature-note {
+            font-size: 12pt;
+        }
+
+
+        /* --- Print Styles --- */
+        @media print {
+            body { background-color: white; font-size: 12pt; }
+            .page-wrapper { width: 100%; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
+            @page {
+                size: A4 portrait;
+                margin: 1.5cm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Thay đổi src bằng link ảnh logo của bạn -->
+        <img class="watermark" src="https://i.imgur.com/u15nqXC.png" alt="Watermark">
+        
+        <div class="content">
+            <header class="header">
+                <div class="header-info">
+                    <p class="bold">Lusty Fit – Chi nhánh Đặng Thai Mai, Tây Hồ</p>
+                    <p>Địa chỉ: Số 3, ngách 12/2/5, Đặng Thai Mai, phường Quảng An, Tây Hồ, Hà Nội</p>
+                    <p>Mã chi nhánh: <span id="branch-code"><?= branch_code ?></span></p>
+                    <p>Email: <span id="company-email"><?= company_email ?></span></p>
+                    <p>SĐT: <span id="company-phone"><?= company_phone ?></span></p>
+                </div>
+            </header>
+
+            <h1 class="main-title">BIÊN LAI THU TIỀN<br>(RECEIPT)</h1>
+            
+            <table class="info-table">
+                <tr>
+                    <td style="width: 65%;">
+                        <b>Số hợp đồng</b>/<i>Contract No.</i>: <span id="contract-no"><?= contract_no ?></span><br>
+                        <b>Mã thành viên</b>/<i>Member No.</i>: <span id="member-no"><?= member_no ?></span><br>
+                        <b>Tên thành viên</b>/<i>Customer</i>: <span id="customer-name"><?= customer_name ?></span><br>
+                        <b>CCCD</b>/<i>ID</i>: <span id="customer-id"><?= customer_id ?></span><br>
+                        <b>SĐT</b>/<i>Phone number</i>: <span id="customer-phone"><?= customer_phone ?></span><br>
+                        <b>Email</b>: <span id="customer-email"><?= customer_email ?></span><br>
+                    </td>
+                    <td>
+                        <b>NV bán hàng</b>/<i>Sale</i>: <span id="sale-person"><?= sale_person ?></span><br>
+                        <b>Ngày mua</b>/<i>Purchase date</i>: <span id="purchase-date"><?= purchase_date ?></span><br>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="details-table">
+                <thead>
+                    <tr>
+                        <th>Mã HĐ<br><i>Contract</i></th>
+                        <th>Gói tập<br><i>Package</i></th>
+                        <th>Khuyến mãi<br><i>Promotion</i></th>
+                        <th>Activation<br><i>Ngày bắt đầu</i></th>
+                        <th>Expiration<br><i>Ngày hết hạn</i></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="data-row">
+                        <td><span id="detail-contract"><?= detail_contract ?></span></td>
+                        <td><span id="detail-package"><?= detail_package ?></span></td>
+                        <td><span id="detail-promotion"><?= detail_promotion ?></span></td>
+                        <td><span id="detail-activation"><?= detail_activation ?></span></td>
+                        <td><span id="detail-expiration"><?= detail_expiration ?></span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <table class="total-table">
+                <tr>
+                    <td class="label-col"><b>Tổng thu</b>/<i>Total amount</i>:</td>
+                    <td colspan="2"><span id="total-amount"><?= total_amount ?></span></td>
+                    <td class="label-col"><b>Lần thu</b>/<i>Receipt time</i>:</td>
+                    <td class="amount-col"><span id="receipt-time"><?= receipt_time ?></span></td>
+                </tr>
+                 <tr>
+                    <td class="label-col"><b>Viết bằng chữ</b>/<i>In word</i>:</td>
+                    <td colspan="2"><span id="amount-in-word"><?= amount_in_word ?></span></td>
+                    <td class="label-col"><b>Chưa thu</b>/<i>Remain</i>:</td>
+                    <td class="amount-col"><span id="remaining-amount"><?= remaining_amount ?></span></td>
+                </tr>
+            </table>
+
+            <section class="notes-section">
+                <p>Ghi chú/<i>Note</i>:</p>
+                <ol>
+                    <li>Khoản tiền và gói thẻ đã thanh toán không được chuyển nhượng hay hoàn trả/<i>Payment and training package are non-transferable and non-refundable.</i></li>
+                    <li>Khách hàng giữ hoá đơn, biên lai để chứng minh cho việc thanh toán/<i>Customer keep invoice, receipt to prove payment.</i></li>
+                    <li>Giá trên đã bao gồm thuế GTGT. Chỉ xuất hoá đơn GTGT trong vòng 24h/<i>The above price includes VAT. Only issue VAT invoices within 24 hours.</i></li>
+                </ol>
+            </section>
+            
+            <section class="signature-section">
+                <div class="signer-block">
+                    <p class="role">Khách hàng</p>
+                    <p class="signature-note"><i>Signature of member</i></p>
+                </div>
+                 <div class="signer-block">
+                    <p class="role">Lusty Fit</p>
+                    <p class="signature-note"><i>Authorised Signatory</i></p>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

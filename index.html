@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GHTK CRM</title>
+    <?!= include('Stylesheet'); ?>
+</head>
+<body>
+    <div id="toast-container"></div>
+    <div id="loader" style="display:none;"></div>
+
+    <nav class="sidebar">
+        <!-- DI CHUYỂN NÚT BẤM LÊN ĐẦU, THAY THẾ LOGO -->
+        <div class="sidebar-header">
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Thu gọn/Mở rộng menu">
+                 <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <!-- KẾT THÚC THAY ĐỔI -->
+
+        <ul class="nav-links">
+            <li><a id="nav-members" class="active" onclick="switchView('members')" data-tooltip="Quản lý Khách hàng">
+                <i class="fas fa-users"></i>
+                <span class="nav-text">Quản lý Khách hàng</span>
+            </a></li>
+            <li><a id="nav-contracts" onclick="switchView('contracts')" data-tooltip="Quản lý Hợp đồng">
+                <i class="fas fa-file-signature"></i>
+                <span class="nav-text">Quản lý Hợp đồng</span>
+            </a></li>
+            <li><a id="nav-pts" onclick="switchView('pts')" data-tooltip="Quản lý PT">
+                <i class="fas fa-user-shield"></i>
+                <span class="nav-text">Quản lý PT</span>
+            </a></li>
+            <li><a id="nav-price-list" onclick="switchView('price-list')" data-tooltip="Bảng giá">
+                <i class="fas fa-tags"></i>
+                <span class="nav-text">Bảng giá</span>
+            </a></li>
+            
+            <!-- MENU CHA: CHÍNH SÁCH -->
+            <li class="nav-parent">
+                <a onclick="toggleSubmenu(this)" data-tooltip="Chính sách">
+                    <i class="fas fa-shield-alt"></i>
+                    <span class="nav-text">Chính sách</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <ul class="submenu">
+                    <li><a id="nav-policy-member" onclick="switchView('policy-member')" data-tooltip="Chính sách Hội viên">
+                        <i class="fas fa-user-tag"></i>
+                        <span class="nav-text">Hội viên</span>
+                    </a></li>
+                    <li><a id="nav-policy-pt" onclick="switchView('policy-pt')" data-tooltip="Chính sách PT">
+                        <i class="fas fa-user-cog"></i>
+                        <span class="nav-text">PT</span>
+                    </a></li>
+                </ul>
+            </li>
+            
+            <!-- MENU CHA: CHƯƠNG TRÌNH & ƯU ĐÃI -->
+            <li class="nav-parent">
+                <a onclick="toggleSubmenu(this)" data-tooltip="Chương trình & Ưu đãi">
+                    <i class="fas fa-gift"></i>
+                    <span class="nav-text">Chương trình & Ưu đãi</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <ul class="submenu">
+                    <li><a id="nav-program" onclick="switchView('program')" data-tooltip="Chương trình">
+                        <i class="fas fa-calendar-check"></i>
+                        <span class="nav-text">Chương trình</span>
+                    </a></li>
+                    <li><a id="nav-gift" onclick="switchView('gift')" data-tooltip="Ưu đãi & Quà tặng">
+                        <i class="fas fa-gifts"></i>
+                        <span class="nav-text">Ưu đãi</span>
+                    </a></li>
+                </ul>
+            </li>
+            
+            <!-- MENU: CÀI ĐẶT -->
+            <li><a id="nav-settings" onclick="switchView('settings')" data-tooltip="Cài đặt">
+                <i class="fas fa-cog"></i>
+                <span class="nav-text">Cài đặt</span>
+            </a></li>
+            
+            <!-- MENU: PHIẾU THU -->
+            <li><a id="nav-receipt" onclick="switchView('receipt')" data-tooltip="Phiếu thu">
+                <i class="fas fa-receipt"></i>
+                <span class="nav-text">Phiếu thu</span>
+            </a></li>
+        </ul>
+    </nav>
+    
+    <!-- Views (Giao diện chính) -->
+    <?!= include('View_Members'); ?>
+    <?!= include('View_Contracts'); ?>
+    <?!= include('View_PT'); ?>
+    <?!= include('View_PriceList'); ?>
+    <?!= include('View_PolicyMember'); ?>
+    <?!= include('View_PolicyPT'); ?>
+    <?!= include('View_Program'); ?>
+    <?!= include('View_Gift'); ?>
+    <?!= include('View_Settings'); ?>
+    <?!= include('View_Receipt'); ?>
+
+    <!-- Modals (Các popup) -->
+    <?!= include('Modal_Member'); ?>
+    <?!= include('Modal_Contract'); ?>
+    <?!= include('Modal_PT'); ?>
+    <?!= include('Modal_PriceList'); ?>
+    <?!= include('Modal_PolicyMember'); ?>
+    <?!= include('Modal_PolicyPT'); ?>
+    <?!= include('Modal_Program'); ?>
+    <?!= include('Modal_Gift'); ?>
+    <?!= include('Modal_Settings'); ?>
+    <?!= include('Modal_Receipt'); ?>
+    
+    <!-- JavaScript (Toàn bộ logic) -->
+    <?!= include('JavaScript'); ?>
+</body>
+</html>

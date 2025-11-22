@@ -1,0 +1,86 @@
+<div id="policyPTModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="policyPTModalTitle">Thêm chính sách PT</h2>
+      <span class="close" onclick="closePolicyPTModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <form id="policyPTForm">
+        <input type="hidden" id="policyPTRowNumber">
+        <input type="hidden" id="policyPTId">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="policyPTHangThanhVien">Hạng thành viên <span class="required">*</span></label>
+            <select id="policyPTHangThanhVien" required>
+              <option value="">-- Chọn hạng --</option>
+              <option value="Đồng">Đồng</option>
+              <option value="Bạc">Bạc</option>
+              <option value="Vàng">Vàng</option>
+              <option value="Bạch Kim">Bạch Kim</option>
+              <option value="Kim Cương">Kim Cương</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="policyPTDiemTichLuy">Điểm tích lũy</label>
+            <input type="number" id="policyPTDiemTichLuy" min="0" value="0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="policyPTChietKhauKHM">Chiết khấu KHM</label>
+            <input type="text" id="policyPTChietKhauKHM" placeholder="VD: 5%">
+          </div>
+          <div class="form-group">
+            <label for="policyPTChietKhauDoanhThu">Chiết khấu doanh thu</label>
+            <input type="text" id="policyPTChietKhauDoanhThu" placeholder="VD: 20%">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="policyPTTinhTrang">Tình trạng</label>
+          <select id="policyPTTinhTrang">
+            <option value="Đang áp dụng">Đang áp dụng</option>
+            <option value="Tạm ngưng">Tạm ngưng</option>
+            <option value="Ngừng áp dụng">Ngừng áp dụng</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="policyPTQuyenLoi">Quyền lợi</label>
+          <textarea id="policyPTQuyenLoi" rows="3" placeholder="Mô tả quyền lợi của PT ở hạng này"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="policyPTUuDaiSelect">
+            <span class="label-icon">🎁</span> Ưu đãi (Chương trình)
+          </label>
+          <div class="multi-select-wrapper">
+            <div class="multi-select-tags" id="policyPTUuDaiTags"></div>
+            <select id="policyPTUuDaiSelect" class="multi-select-dropdown" multiple>
+              <option disabled>-- Chọn chương trình --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="policyPTQuaTangSelect">
+            <span class="label-icon">🎉</span> Quà tặng
+          </label>
+          <div class="multi-select-wrapper">
+            <div class="multi-select-tags" id="policyPTQuaTangTags"></div>
+            <select id="policyPTQuaTangSelect" class="multi-select-dropdown" multiple>
+              <option disabled>-- Chọn quà tặng --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closePolicyPTModal()">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

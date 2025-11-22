@@ -1,0 +1,28 @@
+# Node modules
+node_modules/
+
+# Clasp credentials
+.clasprc.json
+
+# Google Apps Script
+.clasp-*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+
+# Temporary files
+*.tmp
+*.temp
