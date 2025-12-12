@@ -278,14 +278,24 @@
                         <div class="form-field"><label>Ngày sinh/DOB:</label><input type="text" value="<?= customer['Ngày sinh'] || '' ?>"></div>
                     </div>
                 </div>
-                <div class="form-field" style="margin-top: 10px;"><label>Trong trường hợp khẩn cấp liên hệ với ai/Incase of emergency, please contact:</label><input type="text"></div>
+                
+                <div class="form-field" style="margin-top: 10px;">
+                    <label>Trong trường hợp khẩn cấp liên hệ với ai/Incase of emergency, please contact:</label><input type="text">
+                </div>
+                
                 <div class="two-column-layout">
                     <div class="column"><div class="form-field"><label>Tên/Name:</label><input type="text"></div></div>
                     <div class="column"><div class="form-field"><label>SĐT/Phone number:</label><input type="text"></div></div>
                 </div>
-                 <div class="two-column-layout">
-                    <div class="column"><div class="form-field"><label>Từ chối cung cấp thông tin với lí do/Refusal to provide information for:</label><input type="text"></div></div>
-                    <div class="column"><div class="form-field"><label>Ký xác nhận/Signature:</label><input type="text"></div></div>
+
+                <!-- PHẦN CHỈNH SỬA: Tách thành 2 dòng riêng biệt -->
+                <div class="form-field">
+                    <label>Từ chối cung cấp thông tin với lí do/Refusal to provide information for:</label>
+                    <input type="text">
+                </div>
+                <div class="form-field">
+                    <label>Ký xác nhận/Signature:</label>
+                    <input type="text" style="width: 50%;"> <!-- Có thể chỉnh width tùy ý nếu muốn dòng kẻ ngắn lại -->
                 </div>
             </section>
 

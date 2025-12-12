@@ -257,8 +257,7 @@
 </head>
 <body>
     <div class="page-wrapper">
-        <!-- Logo -->
-        <img class="watermark" src="https://i.imgur.com/u15nqXC.png" alt="Watermark">
+       
         
         <div class="content">
             <header class="header">
@@ -292,15 +291,27 @@
                         <div class="form-field"><label>Ngày sinh/DOB:</label><input type="text" value="<?= customer['Ngày sinh'] || '' ?>"></div>
                     </div>
                 </div>
-                <div class="form-field" style="margin-top: 10px;"><label>Trong trường hợp khẩn cấp liên hệ với ai/Incase of emergency, please contact:</label><input type="text"></div>
+                
+                <div class="form-field" style="margin-top: 10px;">
+                    <label>Trong trường hợp khẩn cấp liên hệ với ai/Incase of emergency, please contact:</label><input type="text">
+                </div>
+                
                 <div class="two-column-layout">
                     <div class="column"><div class="form-field"><label>Tên/Name:</label><input type="text"></div></div>
                     <div class="column"><div class="form-field"><label>SĐT/Phone number:</label><input type="text"></div></div>
                 </div>
-                 <div class="two-column-layout">
-                    <div class="column"><div class="form-field"><label>Từ chối cung cấp thông tin với lí do/Refusal to provide information for:</label><input type="text"></div></div>
-                    <div class="column"><div class="form-field"><label>Ký xác nhận/Signature:</label><input type="text"></div></div>
+
+                <!-- PHẦN ĐÃ CHỈNH SỬA: Tách ra khỏi 'two-column-layout' để xuống dòng -->
+                <div class="form-field">
+                    <label>Từ chối cung cấp thông tin với lí do/Refusal to provide information for:</label>
+                    <input type="text">
                 </div>
+                <div class="form-field">
+                    <label>Ký xác nhận/Signature:</label>
+                    <input type="text">
+                </div>
+                <!-- KẾT THÚC PHẦN CHỈNH SỬA -->
+
             </section>
 
             <!-- ========================== SECTION II ========================== -->
