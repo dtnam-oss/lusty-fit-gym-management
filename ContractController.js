@@ -238,7 +238,7 @@ function addContract(contractData) {
     setValue('nguoi_tao', Session.getActiveUser().getEmail());
     setValue('loai_hop_dong', contractType);
     setValue('con_phai_thu', contractData.tong_thanh_toan || 0);
-    setValue('tinh_trang_thanh_toan', 'Chưa thanh toán');
+    setValue('tinh_trang_thanh_toan', 'Chưa thu đủ');
     setValue('IsDeleted', '');
     
     // Log for debugging

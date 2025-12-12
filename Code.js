@@ -5,7 +5,7 @@
 function doGet(e) {
   return HtmlService.createTemplateFromFile('index')
     .evaluate()
-    .setTitle('GHTK CRM System')
+    .setTitle('Lusty Fit CRM System')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
 }
 

@@ -661,10 +661,11 @@
         
         // Filter by search text
         if (searchFilter) {
-            filteredContracts = filteredContracts.filter(contract => 
-                contract.customerName.toLowerCase().includes(searchFilter) ||
-                (contract.id && contract.id.toLowerCase().includes(searchFilter))
-            );
+            filteredContracts = filteredContracts.filter(contract => {
+                const customerName = String(contract.customerName || '').toLowerCase();
+                const contractId = String(contract.id || '').toLowerCase();
+                return customerName.includes(searchFilter) || contractId.includes(searchFilter);
+            });
         }
         
         displayContracts(filteredContracts);
@@ -1285,7 +1286,12 @@
     }
     function filterMemberTable() {
         const filter = document.getElementById('memberSearchInput').value.toLowerCase();
-        const filteredMembers = allMembers.filter(member => member.fullName.toLowerCase().includes(filter) || member.phoneNumber.toLowerCase().includes(filter) || (member.email && member.email.toLowerCase().includes(filter)));
+        const filteredMembers = allMembers.filter(member => {
+            const fullName = String(member.fullName || '').toLowerCase();
+            const phoneNumber = String(member.phoneNumber || '').toLowerCase();
+            const email = String(member.email || '').toLowerCase();
+            return fullName.includes(filter) || phoneNumber.includes(filter) || email.includes(filter);
+        });
         displayMembers(filteredMembers);
     }
     function openAddMemberModal() {
@@ -1607,7 +1613,12 @@
     }
     function filterPTTable() {
         const filter = document.getElementById('ptSearchInput').value.toLowerCase();
-        const filtered = allPTs.filter(p => (p.ten_pt && p.ten_pt.toLowerCase().includes(filter)) || (p.so_dien_thoai && p.so_dien_thoai.toLowerCase().includes(filter)) || (p.email && p.email.toLowerCase().includes(filter)));
+        const filtered = allPTs.filter(p => {
+            const tenPT = String(p.ten_pt || '').toLowerCase();
+            const soDienThoai = String(p.so_dien_thoai || '').toLowerCase();
+            const email = String(p.email || '').toLowerCase();
+            return tenPT.includes(filter) || soDienThoai.includes(filter) || email.includes(filter);
+        });
         displayPTs(filtered);
     }
     

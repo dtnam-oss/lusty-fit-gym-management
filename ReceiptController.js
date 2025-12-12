@@ -461,12 +461,12 @@ function updateContractPaymentStatus(contractId) {
     // Determine payment status
     var paymentStatus = '';
     if (totalReceived === 0) {
-      paymentStatus = 'Chưa thanh toán';
+      paymentStatus = 'Chưa thu đủ';
     } else if (remaining <= 0) {
-      paymentStatus = 'Đã thanh toán đủ';
+      paymentStatus = 'Đã thu đủ';
       remaining = 0;
     } else {
-      paymentStatus = 'Thanh toán một phần';
+      paymentStatus = 'Chưa thu đủ';
     }
     
     
