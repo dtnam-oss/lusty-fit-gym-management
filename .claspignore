@@ -1,0 +1,33 @@
+# Exclude backend folder (Node.js/MongoDB - not for GAS)
+backend/**
+
+# Exclude GitHub Pages docs folder
+docs/**
+
+# Exclude node_modules if present
+node_modules/**
+
+# Exclude documentation files
+*.md
+SCHEMA_*.md
+FEATURE_*.md
+CHANGELOG_*.md
+HYBRID_DEPLOYMENT_GUIDE.md
+MIGRATION_TO_STANDALONE.md
+
+# Exclude migration scripts
+*.sh
+migrate-to-github-pages.sh
+
+# Exclude git files
+.git/**
+.gitignore
+
+# Exclude package files
+package.json
+package-lock.json
+
+# Exclude other config files
+.env
+.env.example
+vercel.json
