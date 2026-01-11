@@ -1,0 +1,26 @@
+<main id="view-contracts" class="main-content">
+    <div class="header">
+        <!-- THÊM LOGO VÀO TIÊU ĐỀ -->
+        <div class="header-title-group">
+            <img src="https://i.postimg.cc/xT413SB1/z7234648879127-a2ff02c03ee9edf9fe290af81c3e65af.jpg" alt="Logo" class="header-logo">
+            <h1>Danh sách Hợp đồng</h1>
+        </div>
+        <!-- KẾT THÚC THAY ĐỔI -->
+        <button class="btn-primary" onclick="openAddContractModal()">Thêm Hợp Đồng Mới</button>
+    </div>
+    
+    <!-- TAB FILTER THEO LOẠI HỢP ĐỒNG -->
+    <div class="button-group" id="contractTypeFilter" style="margin-bottom: 15px; max-width: 500px;">
+        <button class="btn-segment active" data-filter="all" style="background-color: #343A40; color: #FFFFFF; border-color: #343A40;">Tất cả</button>
+        <button class="btn-segment" data-filter="Hội viên" style="color: #343A40;">Hội viên</button>
+        <button class="btn-segment" data-filter="PT" style="color: #343A40;">PT</button>
+    </div>
+    
+    <input type="text" id="contractSearchInput" class="search-bar" onkeyup="filterContractTable()" placeholder="Tìm kiếm theo Tên khách hàng, Mã HĐ...">
+    <div class="table-container" style="margin-top: 20px;">
+        <table>
+            <thead><tr><th>Loại HĐ</th><th>Tên Khách Hàng/PT</th><th>Tên Gói Tập</th><th>Ngày Bắt Đầu</th><th>Ngày Kết Thúc</th><th>Tình Trạng</th><th>Hành Động</th></tr></thead>
+            <tbody id="contractTableBody"></tbody>
+        </table>
+    </div>
+</main>

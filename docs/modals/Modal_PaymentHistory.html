@@ -1,0 +1,82 @@
+<div id="paymentHistoryModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 id="paymentHistoryModalTitle">Lịch sử thanh toán</h2>
+            <span class="close-button" onclick="closePaymentHistoryModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <!-- Thông tin hợp đồng -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div>
+                        <strong>Mã hợp đồng:</strong> 
+                        <span id="ph-contract-id"></span>
+                    </div>
+                    <div>
+                        <strong>Khách hàng:</strong> 
+                        <span id="ph-customer-name"></span>
+                    </div>
+                    <div>
+                        <strong>Gói tập:</strong> 
+                        <span id="ph-package-name"></span>
+                    </div>
+                    <div>
+                        <strong>Tổng giá trị:</strong> 
+                        <span id="ph-total-amount" style="color: #007bff; font-weight: 600;"></span>
+                    </div>
+                    <div>
+                        <strong>Đã thanh toán:</strong> 
+                        <span id="ph-paid-amount" style="color: #28a745; font-weight: 600;"></span>
+                    </div>
+                    <div>
+                        <strong>Còn lại:</strong> 
+                        <span id="ph-remaining-amount" style="color: #dc3545; font-weight: 600;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bảng lịch sử thanh toán -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">Lần</th>
+                            <th style="width: 120px;">Mã phiếu thu</th>
+                            <th style="width: 120px;">Số tiền</th>
+                            <th style="width: 150px;">Thời gian</th>
+                            <th style="width: 100px;">Tháng/Năm</th>
+                            <th style="width: 150px;">Người tạo</th>
+                            <th style="width: 100px;">Tình trạng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentHistoryTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align:center;">Đang tải dữ liệu...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Tổng kết -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; color: #6c757d; margin-bottom: 5px;">Tổng số lần thu</div>
+                        <div id="ph-total-payments" style="font-size: 24px; font-weight: 700; color: #007bff;"></div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; color: #6c757d; margin-bottom: 5px;">Tổng đã thu</div>
+                        <div id="ph-total-collected" style="font-size: 24px; font-weight: 700; color: #28a745;"></div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; color: #6c757d; margin-bottom: 5px;">Trạng thái</div>
+                        <div id="ph-payment-status" style="font-size: 16px; font-weight: 600; margin-top: 8px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 20px; text-align: right;">
+            <button type="button" class="btn-secondary" onclick="closePaymentHistoryModal()">Đóng</button>
+        </div>
+    </div>
+</div>

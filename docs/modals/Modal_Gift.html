@@ -1,0 +1,63 @@
+<div id="giftModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="giftModalTitle">Thêm ưu đãi/quà tặng</h2>
+      <span class="close" onclick="closeGiftModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <form id="giftForm">
+        <input type="hidden" id="giftRowNumber">
+        <input type="hidden" id="giftId">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="giftMaQuaTang">Mã quà tặng <span class="required">*</span></label>
+            <input type="text" id="giftMaQuaTang" required placeholder="VD: GIFT001">
+          </div>
+          <div class="form-group">
+            <label for="giftLoaiHinh">Loại hình <span class="required">*</span></label>
+            <select id="giftLoaiHinh" required>
+              <option value="">-- Chọn loại --</option>
+              <option value="Quà tặng vật phẩm">Quà tặng vật phẩm</option>
+              <option value="Voucher">Voucher</option>
+              <option value="Giảm giá">Giảm giá</option>
+              <option value="Ưu đãi dịch vụ">Ưu đãi dịch vụ</option>
+              <option value="Tích điểm">Tích điểm</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="giftTenQuaTang">Tên quà tặng <span class="required">*</span></label>
+          <input type="text" id="giftTenQuaTang" required placeholder="VD: Áo thun thể thao">
+        </div>
+
+        <div class="form-group">
+          <label for="giftMoTa">Mô tả</label>
+          <textarea id="giftMoTa" rows="3" placeholder="Mô tả chi tiết về quà tặng/ưu đãi"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="giftGiaTri">Giá trị (VNĐ)</label>
+            <input type="number" id="giftGiaTri" min="0" value="0" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label for="giftSoLuong">Số lượng</label>
+            <input type="number" id="giftSoLuong" min="0" value="0" placeholder="0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="giftDieuKienApDung">Điều kiện áp dụng</label>
+          <textarea id="giftDieuKienApDung" rows="3" placeholder="VD: Áp dụng cho hội viên mới, Dành cho hợp đồng trên 5 triệu..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeGiftModal()">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
