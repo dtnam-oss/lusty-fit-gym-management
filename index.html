@@ -41,7 +41,11 @@
                 <i class="fas fa-tags"></i>
                 <span class="nav-text">Bảng giá</span>
             </a></li>
-            
+            <li><a id="nav-contract-template" onclick="switchView('contract-template')" data-tooltip="Mẫu hợp đồng">
+                <i class="fas fa-file-contract"></i>
+                <span class="nav-text">Mẫu hợp đồng</span>
+            </a></li>
+
             <!-- MENU CHA: CHÍNH SÁCH -->
             <li class="nav-parent">
                 <a onclick="toggleSubmenu(this)" data-tooltip="Chính sách">
@@ -93,6 +97,7 @@
     <?!= include('View_Contracts'); ?>
     <?!= include('View_PT'); ?>
     <?!= include('View_PriceList'); ?>
+    <?!= include('View_ContractTemplate'); ?>
     <?!= include('View_PolicyMember'); ?>
     <?!= include('View_PolicyPT'); ?>
     <?!= include('View_Program'); ?>
@@ -105,6 +110,7 @@
     <?!= include('Modal_Contract'); ?>
     <?!= include('Modal_PT'); ?>
     <?!= include('Modal_PriceList'); ?>
+    <?!= include('Modal_ContractTemplate'); ?>
     <?!= include('Modal_PolicyMember'); ?>
     <?!= include('Modal_PolicyPT'); ?>
     <?!= include('Modal_Program'); ?>

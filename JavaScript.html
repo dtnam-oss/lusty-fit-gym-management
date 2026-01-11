@@ -281,7 +281,7 @@
         if (viewName === 'gift') displayGifts();
         if (viewName === 'settings') displaySettings();
         if (viewName === 'receipt') displayReceipts();
-        if (viewName === 'receipt') displayReceipts();
+        if (viewName === 'contract-template') displayContractTemplates();
     }
     function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
     window.onclick = e => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; };
@@ -2853,6 +2853,439 @@
      */
     function closePaymentHistoryModal() {
         document.getElementById('paymentHistoryModal').style.display = 'none';
+    }
+
+    // =================================================================
+    // CONTRACT TEMPLATE MANAGEMENT FUNCTIONS
+    // =================================================================
+
+    let allContractTemplates = [];
+    let currentTemplateFilter = 'all'; // 'all', 'Hội viên', 'PT'
+
+    /**
+     * Hiển thị danh sách mẫu hợp đồng
+     */
+    function displayContractTemplates() {
+        showLoader(true);
+
+        google.script.run
+            .withSuccessHandler(templates => {
+                allContractTemplates = templates || [];
+                renderContractTemplateTable();
+                showLoader(false);
+            })
+            .withFailureHandler(error => {
+                showLoader(false);
+                showToast('Lỗi khi tải danh sách mẫu hợp đồng: ' + error.message, 'error');
+            })
+            .getContractTemplates();
+    }
+
+    /**
+     * Render bảng mẫu hợp đồng
+     */
+    function renderContractTemplateTable() {
+        const tbody = document.getElementById('contract-template-tbody');
+        const noDataMsg = document.getElementById('no-data-message');
+
+        if (!tbody) return;
+
+        // Filter templates based on current filter
+        let filteredTemplates = allContractTemplates;
+        if (currentTemplateFilter !== 'all') {
+            filteredTemplates = allContractTemplates.filter(t => t.loai_mau === currentTemplateFilter);
+        }
+
+        if (filteredTemplates.length === 0) {
+            tbody.innerHTML = '';
+            if (noDataMsg) noDataMsg.style.display = 'block';
+            return;
+        }
+
+        if (noDataMsg) noDataMsg.style.display = 'none';
+
+        tbody.innerHTML = filteredTemplates.map((template, index) => {
+            const statusBadge = template.trang_thai === 'Đang sử dụng'
+                ? '<span class="status-badge active">Đang sử dụng</span>'
+                : '<span class="status-badge inactive">Không sử dụng</span>';
+
+            return `
+                <tr>
+                    <td style="text-align: center;">${index + 1}</td>
+                    <td><strong>${template.ten_mau}</strong></td>
+                    <td><span class="template-type-badge">${template.loai_mau}</span></td>
+                    <td>${template.mo_ta || '-'}</td>
+                    <td style="text-align: center;">${statusBadge}</td>
+                    <td>${template.nguoi_tao || '-'}</td>
+                    <td>${template.ngay_tao || '-'}</td>
+                    <td>${template.nguoi_cap_nhat || '-'}</td>
+                    <td>${template.ngay_cap_nhat || '-'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon btn-preview"
+                                    onclick="previewContractTemplate(${template.rowNumber})"
+                                    title="Xem trước">
+                                👁️
+                            </button>
+                            <button class="btn-icon btn-edit"
+                                    onclick="openEditContractTemplateModal(${template.rowNumber})"
+                                    title="Sửa">
+                                ✏️
+                            </button>
+                            ${template.trang_thai !== 'Đang sử dụng' ? `
+                                <button class="btn-icon btn-activate"
+                                        onclick="activateContractTemplate(${template.rowNumber})"
+                                        title="Kích hoạt">
+                                    ✓
+                                </button>
+                            ` : ''}
+                            <button class="btn-icon btn-delete"
+                                    onclick="deleteContractTemplate(${template.rowNumber})"
+                                    title="Xóa">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Lọc mẫu hợp đồng theo loại
+     */
+    function filterContractTemplateByType(button) {
+        // Update active tab
+        document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+        button.classList.add('active');
+
+        // Update filter
+        currentTemplateFilter = button.getAttribute('data-filter');
+
+        // Re-render table
+        renderContractTemplateTable();
+    }
+
+    /**
+     * Tìm kiếm mẫu hợp đồng
+     */
+    function filterContractTemplateTable() {
+        const searchValue = document.getElementById('contract-template-search').value.toLowerCase();
+        const rows = document.querySelectorAll('#contract-template-tbody tr');
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchValue) ? '' : 'none';
+        });
+    }
+
+    /**
+     * Mở modal thêm mẫu hợp đồng
+     */
+    function openAddContractTemplateModal() {
+        document.getElementById('contract-template-modal-title').textContent = 'Thêm mẫu hợp đồng';
+        document.getElementById('contract-template-form').reset();
+        document.getElementById('template-row-number').value = '';
+        document.getElementById('contract-template-modal').style.display = 'block';
+    }
+
+    /**
+     * Mở modal sửa mẫu hợp đồng
+     */
+    function openEditContractTemplateModal(rowNumber) {
+        showLoader(true);
+
+        google.script.run
+            .withSuccessHandler(template => {
+                document.getElementById('contract-template-modal-title').textContent = 'Sửa mẫu hợp đồng';
+                document.getElementById('template-row-number').value = template.rowNumber;
+                document.getElementById('template-name').value = template.ten_mau;
+                document.getElementById('template-type').value = template.loai_mau;
+                document.getElementById('template-description').value = template.mo_ta || '';
+                document.getElementById('template-status').value = template.trang_thai;
+                document.getElementById('template-html-content').value = template.noi_dung_html || '';
+
+                document.getElementById('contract-template-modal').style.display = 'block';
+                showLoader(false);
+            })
+            .withFailureHandler(error => {
+                showLoader(false);
+                showToast('Lỗi khi tải thông tin mẫu: ' + error.message, 'error');
+            })
+            .getContractTemplateByRow(rowNumber);
+    }
+
+    /**
+     * Đóng modal mẫu hợp đồng
+     */
+    function closeContractTemplateModal() {
+        document.getElementById('contract-template-modal').style.display = 'none';
+    }
+
+    /**
+     * Lưu mẫu hợp đồng (thêm/sửa)
+     */
+    function saveContractTemplate() {
+        const rowNumber = document.getElementById('template-row-number').value;
+        const templateData = {
+            ten_mau: document.getElementById('template-name').value.trim(),
+            loai_mau: document.getElementById('template-type').value,
+            mo_ta: document.getElementById('template-description').value.trim(),
+            trang_thai: document.getElementById('template-status').value,
+            noi_dung_html: document.getElementById('template-html-content').value
+        };
+
+        // Validation
+        if (!templateData.ten_mau) {
+            showToast('Vui lòng nhập tên mẫu', 'error');
+            return;
+        }
+
+        if (!templateData.loai_mau) {
+            showToast('Vui lòng chọn loại mẫu', 'error');
+            return;
+        }
+
+        if (!templateData.noi_dung_html) {
+            showToast('Vui lòng nhập nội dung HTML', 'error');
+            return;
+        }
+
+        showLoader(true);
+
+        if (rowNumber) {
+            // Update
+            templateData.rowNumber = parseInt(rowNumber);
+            google.script.run
+                .withSuccessHandler(response => {
+                    showLoader(false);
+                    closeContractTemplateModal();
+                    showToast(response.message, 'success');
+                    displayContractTemplates();
+                })
+                .withFailureHandler(error => {
+                    showLoader(false);
+                    showToast('Lỗi khi cập nhật mẫu: ' + error.message, 'error');
+                })
+                .updateContractTemplate(templateData);
+        } else {
+            // Add
+            google.script.run
+                .withSuccessHandler(response => {
+                    showLoader(false);
+                    closeContractTemplateModal();
+                    showToast(response.message, 'success');
+                    displayContractTemplates();
+                })
+                .withFailureHandler(error => {
+                    showLoader(false);
+                    showToast('Lỗi khi thêm mẫu: ' + error.message, 'error');
+                })
+                .addContractTemplate(templateData);
+        }
+    }
+
+    /**
+     * Xóa mẫu hợp đồng
+     */
+    function deleteContractTemplate(rowNumber) {
+        if (!confirm('Bạn có chắc chắn muốn xóa mẫu hợp đồng này?')) {
+            return;
+        }
+
+        showLoader(true);
+
+        google.script.run
+            .withSuccessHandler(response => {
+                showLoader(false);
+                showToast(response.message, 'success');
+                displayContractTemplates();
+            })
+            .withFailureHandler(error => {
+                showLoader(false);
+                showToast('Lỗi khi xóa mẫu: ' + error.message, 'error');
+            })
+            .deleteContractTemplate(rowNumber);
+    }
+
+    /**
+     * Kích hoạt mẫu hợp đồng
+     */
+    function activateContractTemplate(rowNumber) {
+        if (!confirm('Kích hoạt mẫu này? Mẫu cũ cùng loại sẽ bị vô hiệu hóa.')) {
+            return;
+        }
+
+        showLoader(true);
+
+        google.script.run
+            .withSuccessHandler(template => {
+                const templateData = {
+                    rowNumber: rowNumber,
+                    ten_mau: template.ten_mau,
+                    loai_mau: template.loai_mau,
+                    mo_ta: template.mo_ta,
+                    noi_dung_html: template.noi_dung_html,
+                    trang_thai: 'Đang sử dụng'
+                };
+
+                google.script.run
+                    .withSuccessHandler(response => {
+                        showLoader(false);
+                        showToast('Đã kích hoạt mẫu hợp đồng', 'success');
+                        displayContractTemplates();
+                    })
+                    .withFailureHandler(error => {
+                        showLoader(false);
+                        showToast('Lỗi khi kích hoạt mẫu: ' + error.message, 'error');
+                    })
+                    .updateContractTemplate(templateData);
+            })
+            .withFailureHandler(error => {
+                showLoader(false);
+                showToast('Lỗi: ' + error.message, 'error');
+            })
+            .getContractTemplateByRow(rowNumber);
+    }
+
+    /**
+     * Xem trước mẫu hợp đồng
+     */
+    function previewContractTemplate(rowNumber) {
+        showLoader(true);
+
+        google.script.run
+            .withSuccessHandler(template => {
+                const previewContent = document.getElementById('template-preview-content');
+
+                // Create a sample data object for preview
+                const sampleData = {
+                    customer: {
+                        'Họ và Tên': 'Nguyễn Văn A',
+                        'CCCD': '001234567890',
+                        'Địa chỉ': 'Số 3, ngách 12/2/5, Đặng Thai Mai, Tây Hồ, Hà Nội',
+                        'Email': 'nguyenvana@example.com',
+                        'Số điện thoại': '0123456789',
+                        'Giới tính': 'Nam',
+                        'Ngày sinh': '01/01/1990'
+                    },
+                    contract: {
+                        id: 'HĐHV-001',
+                        customerId: 'KH-001',
+                        packageName: 'Gói tập 6 tháng',
+                        totalAmount: '10,000,000 VND',
+                        startDate: '01/01/2024',
+                        endDate: '30/06/2024'
+                    },
+                    generatedDate: new Date().toLocaleDateString('vi-VN')
+                };
+
+                // Replace template variables with sample data
+                let htmlContent = template.noi_dung_html;
+
+                // Replace customer data
+                Object.keys(sampleData.customer).forEach(key => {
+                    const regex = new RegExp(`<\\?=\\s*customer\\['${key}'\\]\\s*\\|\\|\\s*''\\s*\\?>`, 'g');
+                    htmlContent = htmlContent.replace(regex, sampleData.customer[key]);
+                });
+
+                // Replace contract data
+                Object.keys(sampleData.contract).forEach(key => {
+                    const regex = new RegExp(`<\\?=\\s*contract\\.${key}\\s*\\|\\|\\s*''\\s*\\?>`, 'g');
+                    htmlContent = htmlContent.replace(regex, sampleData.contract[key]);
+                });
+
+                // Replace generated date
+                htmlContent = htmlContent.replace(/<\?=\s*generatedDate\s*\|\|\s*''\s*\?>/g, sampleData.generatedDate);
+
+                // Display preview
+                previewContent.innerHTML = htmlContent;
+                document.getElementById('template-preview-modal').style.display = 'block';
+                showLoader(false);
+            })
+            .withFailureHandler(error => {
+                showLoader(false);
+                showToast('Lỗi khi tải mẫu xem trước: ' + error.message, 'error');
+            })
+            .getContractTemplateByRow(rowNumber);
+    }
+
+    /**
+     * Xem trước HTML từ editor
+     */
+    function previewHTMLContent() {
+        const htmlContent = document.getElementById('template-html-content').value;
+
+        if (!htmlContent) {
+            showToast('Chưa có nội dung HTML để xem trước', 'error');
+            return;
+        }
+
+        // Create sample data
+        const sampleData = {
+            customer: {
+                'Họ và Tên': 'Nguyễn Văn A',
+                'CCCD': '001234567890',
+                'Địa chỉ': 'Số 3, ngách 12/2/5, Đặng Thai Mai, Tây Hồ, Hà Nội',
+                'Email': 'nguyenvana@example.com',
+                'Số điện thoại': '0123456789',
+                'Giới tính': 'Nam',
+                'Ngày sinh': '01/01/1990'
+            },
+            contract: {
+                id: 'HĐHV-001',
+                customerId: 'KH-001',
+                packageName: 'Gói tập 6 tháng',
+                totalAmount: '10,000,000 VND',
+                startDate: '01/01/2024',
+                endDate: '30/06/2024'
+            },
+            generatedDate: new Date().toLocaleDateString('vi-VN')
+        };
+
+        // Replace variables
+        let processedHTML = htmlContent;
+
+        Object.keys(sampleData.customer).forEach(key => {
+            const regex = new RegExp(`<\\?=\\s*customer\\['${key}'\\]\\s*\\|\\|\\s*''\\s*\\?>`, 'g');
+            processedHTML = processedHTML.replace(regex, sampleData.customer[key]);
+        });
+
+        Object.keys(sampleData.contract).forEach(key => {
+            const regex = new RegExp(`<\\?=\\s*contract\\.${key}\\s*\\|\\|\\s*''\\s*\\?>`, 'g');
+            processedHTML = processedHTML.replace(regex, sampleData.contract[key]);
+        });
+
+        processedHTML = processedHTML.replace(/<\?=\s*generatedDate\s*\|\|\s*''\s*\?>/g, sampleData.generatedDate);
+
+        // Show preview
+        const previewContent = document.getElementById('template-preview-content');
+        previewContent.innerHTML = processedHTML;
+        document.getElementById('template-preview-modal').style.display = 'block';
+    }
+
+    /**
+     * Đóng modal xem trước
+     */
+    function closeTemplatePreviewModal() {
+        document.getElementById('template-preview-modal').style.display = 'none';
+    }
+
+    /**
+     * Toggle HTML editor mode (code vs visual)
+     */
+    function toggleHTMLEditor() {
+        const codeEditor = document.getElementById('html-code-editor');
+        const visualEditor = document.getElementById('html-visual-editor');
+
+        if (codeEditor.style.display === 'none') {
+            codeEditor.style.display = 'block';
+            visualEditor.style.display = 'none';
+        } else {
+            codeEditor.style.display = 'none';
+            visualEditor.style.display = 'block';
+            showToast('Chế độ soạn thảo trực quan đang được phát triển', 'info');
+        }
     }
 
 </script>
